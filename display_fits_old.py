@@ -29,38 +29,41 @@ frame_widgets.grid(row=0,column=1,sticky='N')
 ###########
 
 #create a wittle section to print x,y coordinates of cursor position (when left-clicked)
-frame_coord = LabelFrame(root,text='Image Coordinates & Value',padx=5,pady=5)
+frame_coord = LabelFrame(root,text='Image Coordinates',padx=5,pady=5)
 frame_coord.grid(row=0,column=1)
 
 #add empty label
 labelle = Label(frame_coord,text='(x_coord, y_coord)',font=helv20)
 labelle.grid(row=0,column=0)
 
-labelle2 = Label(frame_coord,text='Pixel Value:  ',font=helv20)
-labelle2.grid(row=1,column=0)
+#create command function
+def print_location(event, length):
+    
+    #print(event.x,event.y)
+    
+    '''
+    canvas returns the pixel coordinates of the CANVAS, not of the plot. A few complications:
+       1. pixels are not 1-to-1, so moving from pixel (40,40) to pixel (41,41) on canvas will
+          not necessarily go from (10,10) to (11,11) on the plot. Scale is different!
+       2. there is a bit of white space in between the canvas and the beginning of the plot
+    through heaps of trial and error, I have settled on an empirically-derived scale (length of image/465)
+    as well as subtracting from that the similarly empirically-derived white space (~75 canvas pixels)*(scale)
+    note that I subtract these values from the image's height, since the y-coordinate is flipped in Canvas.
+    ONE YET UNRESOLVED PROBLEM --> if I rescale the window, the modifications below no longer apply.
+    '''
+    
+    scale = length/463
+    x = np.round(event.x*scale - 75*scale, 2)
+    y = np.round(length - (event.y*scale - 75*scale), 2)
+    
+    #edit the coordinate label
+    if (x<=length) & (y<=length) & (x>0) & (y>0):
+        labelle.config(text=f'({x}, {y})',font=helv20)   
+    else:
+        labelle.config(text='(x_coord, y_coord)',font=helv20)
+                    
+    #print(f' location of x={event.x*scale - 75*scale}, location of y={length - (event.y*scale - 75*scale)}')
 
-#create command function to extract coordinates aT ThE cLiCk Of A bUtToN
-def plotClick(event):
-    
-    x = event.xdata
-    y = event.ydata
-    
-    try:   #if x,y are within the plot bounds, then xdata and ydata will be floats; can round.
-        x = np.round(x,2)
-        y = np.round(y,2)
-        labelle.config(text=f'({x}, {y})',font=helv20)
-    
-    except:   #if outside of plot bounds, then xdata and ydata are NoneTypes; cannot round.
-        labelle.config(text=f'({x}, {y})',font=helv20)  
-
-#create command function to extract a pixel value aT ThE cLiCk Of A bUtToN
-def plotValue(event,im_dat,length):
-    x=int(event.xdata)
-    y=int(event.ydata)
-    value = im_dat[length-y][x]   #origin is lower left, but indices begin at upper left
-
-    labelle2.config(text=f'Pixel Value: {np.round(value,4)}',font=helv20)
-    
 ###########
 
 #grab current directory, generate list of strings representing item names in said directory
@@ -90,27 +93,23 @@ e.grid(row=0,column=0)
 plt.figure(figsize=(3,3))
 
 try:
-    dat = data_list[0]
-    im = plt.imshow(dat,origin='lower')
+    im = plt.imshow(data_list[0],origin='lower')
     plt.title(filenames[0],fontsize=10)
-    im_length = len(dat)
+    #define image length; will need for label.bind command (in order to callibrate pixel coordinates)
+    im_length = len(data_list[0])
     
 except:
     dat=np.random.random((200,200))
     im = plt.imshow(dat,origin='lower')
     plt.title(filenames[0]+' not a 2D image.',fontsize=6)    
-    im_length = len(dat)
+    im_length = 200
 
-#set up canvas
 canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display) 
-
-#binds left-click to extract the plot's x,y pixel coordinates, and the value at these coordinates
-canvas.mpl_connect('button_press_event',plotClick)
-canvas.mpl_connect('button_press_event',lambda event: plotValue(event,dat,im_length))
     
 #create a label instance for the canvas window
 label = canvas.get_tk_widget()
 label.grid(row=0,column=0,columnspan=3,rowspan=4)
+label.bind("<Motion>", lambda event:print_location(event,length=im_length))
     
 #command to change colormap of the cutout pixels
 change_colormap_manual = lambda: (im.set_cmap(e.get()), canvas.draw())
@@ -129,6 +128,7 @@ def forward(image_index):
     global n_images
     
     #eliminate the current canvas object, then close the plot. I add plt.close() for memory/performance purposes
+    label.unbind('<Return>')
     label.delete('all')
     plt.close()
     
@@ -136,24 +136,21 @@ def forward(image_index):
     #since python dislikes trying to plt.imshow a data table. 
     plt.figure(figsize=(3,3))
     try:
-        dat = data_list[image_index]
-        im = plt.imshow(dat,origin='lower')
+        im = plt.imshow(data_list[image_index],origin='lower')
         plt.title(filenames[image_index],fontsize=10)        
-        im_length = len(dat)
+        im_length = len(data_list[image_index])
     except:
         dat=np.random.random((200,200))
         im = plt.imshow(dat,origin='lower')
         plt.title(filenames[image_index]+' not a 2D image.',fontsize=6)
-        im_length = len(dat)
+        im_length = 200
         print('Not a 2D image.')
     
     canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display)
-    #binds left-click to extract the plot's x,y pixel coordinates, and the pixel value at these coordinates
-    canvas.mpl_connect('button_press_event',plotClick)
-    canvas.mpl_connect('button_press_event',lambda event: plotValue(event,dat,im_length))
     
     #create a label instance for the canvas window
     label = canvas.get_tk_widget()
+    label.bind('<Return>', lambda event, arg=im_length:print_location(event,length=arg))
 
     #forward button will bring user to the next, next image (image_index+1). sort of neat how you can call the function within the function. Likewise with the back button.
     button_forward = Button(frame_display, text='>>', font=helv20, fg='magenta', command=lambda: forward(image_index+1))
@@ -194,21 +191,16 @@ def back(image_index):
     #since python dislikes trying to plt.imshow a data table. 
     plt.figure(figsize=(3,3))
     try:
-        dat = data_list[image_index]
-        im = plt.imshow(dat,origin='lower')
+        im = plt.imshow(data_list[image_index],origin='lower')
         plt.title(filenames[image_index],fontsize=10)
+        canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display)    
     except:
         dat=np.random.random((200,200))
         im = plt.imshow(dat,origin='lower')
         plt.title(filenames[image_index]+' not a 2D image.',fontsize=6)
-    
-    canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display)
-    #binds left-click to extract the plot's x,y pixel coordinates, and the pixel value at these coordinates
-    canvas.mpl_connect('button_press_event',plotClick)
-    canvas.mpl_connect('button_press_event',lambda event: plotValue(event,dat,im_length))
+        canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display)
     
     label = canvas.get_tk_widget()
-    
     button_forward = Button(frame_display, text='>>', font=helv20, fg='magenta', command=lambda: forward(image_index+1))
     button_back = Button(frame_display, text='<<', font=helv20, fg='magenta', command=lambda: back(image_index-1))
     
@@ -220,6 +212,8 @@ def back(image_index):
     color_button.grid(row=1,column=0)
     
     status = Label(frame_display, text="Image {} of ".format(str(image_index+1))+n_images, bd=1, relief=SUNKEN)
+
+    label.bind("<Button-1>", print_location)
     
     label.grid(row=0,column=0,columnspan=3,rowspan=4)
     button_back.grid(row=4,column=0)
