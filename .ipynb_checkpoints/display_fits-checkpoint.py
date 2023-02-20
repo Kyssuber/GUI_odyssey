@@ -12,27 +12,36 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from tkinter import font as tkFont  # for convenience
 
+homedir=os.getenv("HOME")
+
 #set up main GUI window
 root = Tk()
 root.title('FITS Viewer')
+root.geometry("1000x600")
 
 #create a font preference
 helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
 
 #create two frames, side-by-side.
 frame_display = LabelFrame(root,text='Display',padx=5,pady=5)
-frame_display.grid(row=0,column=0)
+frame_display.grid(row=0,column=0,rowspan=10)
 
 frame_widgets = LabelFrame(root,text='Edit Color Scheme',padx=2,pady=2)
-frame_widgets.grid(row=0,column=1,sticky='N')
-
-###########
+frame_widgets.grid(row=0,column=1)
 
 #create a wittle section to print x,y coordinates of cursor position (when left-clicked)
 frame_coord = LabelFrame(root,text='Image Coordinates & Value',padx=5,pady=5)
-frame_coord.grid(row=0,column=1)
+frame_coord.grid(row=5,column=1,sticky='se')
 
-#add empty label
+#lastly, a frame for a few buttons
+frame_buttons = LabelFrame(root,text='Features',padx=5,pady=5)
+frame_buttons.grid(row=2,column=1)
+
+png_name = Entry(frame_buttons, width=35, borderwidth=2, bg='black',fg='lime green', font=('Arial 20'))
+png_name.insert(0,'figurename.png')
+png_name.grid(row=0,column=0)   
+
+#add empty labels for displaying coords and px values
 labelle = Label(frame_coord,text='(x_coord, y_coord)',font=helv20)
 labelle.grid(row=0,column=0)
 
@@ -41,7 +50,6 @@ labelle2.grid(row=1,column=0)
 
 #create command function to extract coordinates aT ThE cLiCk Of A bUtToN
 def plotClick(event):
-    
     x = event.xdata
     y = event.ydata
     
@@ -55,12 +63,21 @@ def plotClick(event):
 
 #create command function to extract a pixel value aT ThE cLiCk Of A bUtToN
 def plotValue(event,im_dat,length):
-    x=int(event.xdata)
-    y=int(event.ydata)
-    value = im_dat[length-y][x]   #origin is lower left, but indices begin at upper left
-
-    labelle2.config(text=f'Pixel Value: {np.round(value,4)}',font=helv20)
+    x=event.xdata
+    y=event.ydata
     
+    try:
+        x = int(x)
+        y = int(y)
+        value = im_dat[y][x]
+        value = np.round(value,4)
+    except:
+        value = 'None'
+    
+    labelle2.config(text=f'Pixel Value: {value}',font=helv20)
+
+def saveFig():
+    plt.savefig(homedir+'/Desktop/'+str(png_name.get()),dpi=250)
 ###########
 
 #grab current directory, generate list of strings representing item names in said directory
@@ -103,13 +120,13 @@ except:
 
 #set up canvas
 canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display) 
-
 #binds left-click to extract the plot's x,y pixel coordinates, and the value at these coordinates
 canvas.mpl_connect('button_press_event',plotClick)
 canvas.mpl_connect('button_press_event',lambda event: plotValue(event,dat,im_length))
     
 #create a label instance for the canvas window
 label = canvas.get_tk_widget()
+#label.config(width=800, height=800)
 label.grid(row=0,column=0,columnspan=3,rowspan=4)
     
 #command to change colormap of the cutout pixels
@@ -179,7 +196,6 @@ def forward(image_index):
     button_forward.grid(row=4,column=2)
     status.grid(row=5,column=0,columnspan=3,sticky=W+E)
     
-    
 #define the 'back button' widget (see above for notes)    
 def back(image_index):
     global label
@@ -231,11 +247,13 @@ color_button = Button(frame_widgets,text='Set Manual Color Scheme', font=helv20,
 button_back = Button(frame_display, text='<<', font=helv20, fg='magenta', command=lambda: back(0), state=DISABLED)
 button_forward = Button(frame_display, text='>>', font=helv20, fg='magenta', command=lambda: forward(1))
 button_quit = Button(frame_display, text='Terminate', padx=20, pady=10, font=helv20, command=root.quit)
+save_button = Button(frame_buttons,text='Save .png',padx=20,pady=10,font=helv20,command=saveFig)
 
 color_button.grid(row=1,column=0) 
 button_back.grid(row=4,column=0)
 button_quit.grid(row=4,column=1)
 button_forward.grid(row=4,column=2)
+save_button.grid(row=1,column=0)
 
 status.grid(row=5,column=0,columnspan=3,sticky=W+E)
 
@@ -247,6 +265,8 @@ for i in range(5):
     frame_widgets.grid_rowconfigure(i,weight=1)
     frame_coord.grid_columnconfigure(i,weight=1)
     frame_coord.grid_rowconfigure(i,weight=1)
+    frame_buttons.grid_columnconfigure(i,weight=1)
+    frame_buttons.grid_rowconfigure(i,weight=1)
     
     root.grid_columnconfigure(i,weight=1)
     root.grid_rowconfigure(i,weight=1)
