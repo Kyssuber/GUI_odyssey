@@ -272,4 +272,6 @@ for i in range(5):
     root.grid_rowconfigure(i,weight=1)
 
 #annnnnnnnd, activate.
-root.mainloop()
+if __name__ == '__main__':
+    root.mainloop()
+    root.destroy()

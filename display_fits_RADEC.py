@@ -12,13 +12,14 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.wcs import WCS
 from tkinter import font as tkFont  # for convenience
+from tkinter import messagebox # for convenience
 
 homedir=os.getenv("HOME")
 
 #set up main GUI window
 root = Tk()
 root.title('FITS Viewer')
-root.geometry("1000x600")
+root.geometry("1100x700")
 
 #create a font preference
 helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
@@ -51,6 +52,13 @@ labelle3.grid(row=2,column=0)
 
 labelle2 = Label(frame_coord,text='Pixel Value:  ',font=helv20)
 labelle2.grid(row=1,column=0)
+
+textbox = "GOAL: display and loop through all .fits files (if any) in user directory. Gnarly features: status label, forward/back buttons in order to browse images, usw. In color scheme textbox, type a matplotlib color arg (e.g., rainbow, viridis, gray, cool), then click the button widget underneath. The user can do likewise with the save feature, replacing the entry text with the desired filename.png to save a .PNG of the current canvas display to the Desktop. Lastly, the canvas is click-interactive: left-click on an image pixel, and the output will modify the pixel's Cartesian coordinates, its RA and DEC coordinates, and its pixel value in the bottom-right frame."
+
+#create command function to print info popup message
+#Different message types: showinfo, showwarning, showerror, askquestion, askokcancel, askyesno
+def popup():
+    messagebox.showinfo('Unconventional README.md',textbox)
 
 #create command function to extract coordinates aT ThE cLiCk Of A bUtToN
 #filename should be file_title[index] --> if title is valid, then "try" will proceed as normal. if file is invalid, then "except" will appear.
@@ -216,12 +224,16 @@ def forward(image_index):
     
     #update status label
     status = Label(frame_display, text="Image {} of ".format(str(image_index+1))+n_images, bd=1, relief=SUNKEN)
-        
+    
+    #re-insert the info button...
+    info_button = Button(frame_display, text='Click for Info',padx=15,pady=5,font='Ariel 10', command=popup)
+    
     #add status and...every other button.
     label.grid(row=0,column=0,columnspan=3,rowspan=4)
     button_back.grid(row=4,column=0)
     button_forward.grid(row=4,column=2)
     status.grid(row=5,column=0,columnspan=3,sticky=W+E)
+    info_button.grid(row=5,column=2,sticky='ne')
     
 #define the 'back button' widget (see above for notes)    
 def back(image_index):
@@ -268,10 +280,13 @@ def back(image_index):
     
     status = Label(frame_display, text="Image {} of ".format(str(image_index+1))+n_images, bd=1, relief=SUNKEN)
     
+    info_button = Button(frame_display, text='Click for Info',padx=15,pady=5,font='Ariel 10', command=popup)
+    
     label.grid(row=0,column=0,columnspan=3,rowspan=4)
     button_back.grid(row=4,column=0)
     button_forward.grid(row=4,column=2)
     status.grid(row=5,column=0,columnspan=3,sticky=W+E)
+    info_button.grid(row=5,column=2,sticky='ne')
 
 #in the initial frames, define and add the buttons! And the status! 
 color_button = Button(frame_widgets,text='Set Manual Color Scheme', font=helv20, command=change_colormap_manual)
@@ -279,12 +294,14 @@ button_back = Button(frame_display, text='<<', font=helv20, fg='magenta', comman
 button_forward = Button(frame_display, text='>>', font=helv20, fg='magenta', command=lambda: forward(1))
 button_quit = Button(frame_display, text='Terminate', padx=20, pady=10, font=helv20, command=root.quit)
 save_button = Button(frame_buttons,text='Save .png',padx=20,pady=10,font=helv20,command=saveFig)
+info_button = Button(frame_display, text='Click for Info',padx=5,pady=5,font='Ariel 10', command=popup)
 
 color_button.grid(row=1,column=0) 
 button_back.grid(row=4,column=0)
 button_quit.grid(row=4,column=1)
 button_forward.grid(row=4,column=2)
 save_button.grid(row=1,column=0)
+info_button.grid(row=5,column=2,sticky='ne')
 
 status.grid(row=5,column=0,columnspan=3,sticky=W+E)
 
@@ -303,4 +320,6 @@ for i in range(5):
     root.grid_rowconfigure(i,weight=1)
 
 #annnnnnnnd, activate.
-root.mainloop()
+if __name__ == '__main__':
+    root.mainloop()
+    root.destroy()
