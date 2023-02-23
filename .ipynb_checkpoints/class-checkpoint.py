@@ -45,11 +45,26 @@ class App(tk.Tk):
 class MainPage(tk.Frame):    
     
     def __init__(self, parent, controller):
+        
+        #define a font
+        self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
+        
+        self.textbox="GOAL: display and loop through all .fits files (if any) in user directory. Gnarly features: status label, forward/back buttons in order to browse images, usw. In color scheme textbox, type a matplotlib color arg (e.g., rainbow, viridis, gray, cool), then click the button widget underneath. The user can do likewise with the save feature, replacing the entry text with the desired filename.png to save a .PNG of the current canvas display to the Desktop. Lastly, the canvas is click-interactive: left-click on an image pixel, and the output will modify the pixel's Cartesian coordinates, its RA and DEC coordinates, and its pixel value in the bottom-right frame."
+        
         #first frame...
         tk.Frame.__init__(self,parent)
         
         self.frame_display=tk.LabelFrame(self,text='Display',font='Vendana 15',padx=5,pady=5)
         self.frame_display.grid(row=0,column=0,rowspan=10)
+        
+        self.frame_widgets=tk.LabelFrame(self,text='Edit Color',padx=2,pady=2)
+        self.frame_widgets.grid(row=0,column=1)
+        
+        self.frame_coord=tk.LabelFrame(self,text='Image Coords and Value',padx=5,pady=5)
+        self.frame_coord.grid(row=5,column=1,sticky='se')
+        
+        self.frame_buttons=tk.LabelFrame(self,text='Features',padx=5,pady=5)
+        self.frame_buttons.grid(row=2,column=1)
         
         self.get_filedat()
     
@@ -66,25 +81,32 @@ class MainPage(tk.Frame):
             plt.title(self.filenames[0]+' not a 2D image.',fontsize=6)
             self.file_titles.append(self.filenames[0]+'.')
         im_length = len(dat)
-                
+
         #set up canvas
         canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display) 
         
         #binds left-click to extract the plot's x,y pixel coordinates, and the value at these coordinates
-        #canvas.mpl_connect('button_press_event', lambda event: self.plotClick(event, self.file_titles[0]))
-        #canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, dat, im_length))
-
+        canvas.mpl_connect('button_press_event', lambda event: self.plotClick(event, self.file_titles[0]))
+        canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, dat, im_length))
+        
+        self.change_colormap_manual = lambda: (im.set_cmap(self.color_entry.get()), canvas.draw())
+        self.add_colorwidget()
+        
         #create a label instance for the canvas window
-        label = canvas.get_tk_widget()
+        self.label = canvas.get_tk_widget()        
+        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)
         
-        #label.config(width=800, height=800)
-        label.grid(row=0,column=0,columnspan=3,rowspan=4)
+        self.add_statusbar(image_index=0)
+        self.add_entry_png()
+        self.add_px_info()
         
-       
+        self.add_forward_button(image_index=0)
+        self.add_backward_button(image_index=0)
+        self.add_info_button()
+    
     def get_filedat(self):    
         path_to_dir = os.getcwd()   #get current working directory
         self.filenames = os.listdir(path_to_dir)   #create list of all filenames in working directory
-        
         self.data_list = []
         self.file_titles = []     #titles for plt.imshow. if a 2D image, then title will be same a filename. 
         
@@ -94,15 +116,198 @@ class MainPage(tk.Frame):
                 self.filenames.remove(file)
             else:
                 self.data_list.append(fits.getdata(file))
-         
-        if self.filenames==0:
+
+        self.n_images = len(self.filenames)
+        
+        if self.n_images==0:
             print('No FITS files in cwd. GUI may not compile correctly, if at all.')
 
+    def add_entry_png(self):
+        self.png_name = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', font='Arial 20')
+        self.png_name.insert(0,'figurename.png')
+        self.png_name.grid(row=0,column=0)
+    
+    def add_statusbar(self,image_index):
+        self.n_images = str(len(self.filenames))
+        status = tk.Label(self.frame_display, text=f'Image {image_index+1} of {self.n_images}', bd=1, relief=tk.SUNKEN)
+        status.grid(row=5,column=0,columnspan=3,sticky='we')
+    
+    def add_px_info(self):
+        self.xy = tk.Label(self.frame_coord,text='x_coord, y_coord',font=self.helv20)
+        self.xy.grid(row=0,column=0)
+        self.val = tk.Label(self.frame_coord,text='Pixel Value: ',font=self.helv20)
+        self.val.grid(row=1,column=0)
+        self.radec = tk.Label(self.frame_coord,text='(RA (deg), DEC (deg))',font=self.helv20)
+        self.radec.grid(row=2,column=0)
         
+    def add_colorwidget(self):
+        self.color_entry = tk.Entry(self.frame_widgets, width=35, borderwidth=5, bg='black',fg='lime green', font=('Arial 20'))
+        self.color_entry.grid(row=0,column=0) 
+        self.color_button = tk.Button(self.frame_widgets,text='Set Manual Color Scheme', font=self.helv20, command=self.change_colormap_manual)
+        self.color_button.grid(row=1,column=0) 
         
+    def add_forward_button(self,image_index):
+        #if user has arrived at the last image, then disable the forward button.
+        if image_index==int(self.n_images)-1:
+            self.button_forward = tk.Button(self.frame_display, text='>>', font=self.helv20, fg='magenta', command=lambda:self.forward(image_index+1),state=tk.DISABLED)
+        else:
+            self.button_forward = tk.Button(self.frame_display, text='>>', font=self.helv20, fg='magenta', command=lambda:self.forward(image_index+1))
+        self.button_forward.grid(row=4,column=2)
+
+    def add_backward_button(self,image_index):
+        if image_index==0:
+            self.button_back = tk.Button(self.frame_display, text='<<', font=self.helv20, fg='magenta', command=lambda:self.back(image_index-1),state=tk.DISABLED)
+        else:
+            self.button_back = tk.Button(self.frame_display, text='<<', font=self.helv20, fg='magenta', command=lambda:self.back(image_index-1))
+        self.button_back.grid(row=4,column=0)
+            
+    def add_info_button(self):
+        self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15,pady=10,font='Ariel 20', command=self.popup)
+        self.info_button.grid(row=4,column=1)
+   
+    #define the 'forward button widget'
+    def forward(self, image_index):
+
+        #eliminate the current canvas object, then close the plot. I add plt.close() for memory/performance purposes
+        self.label.delete('all')
+        plt.close()
+
+        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise,
+        #since python dislikes trying to plt.imshow a data table. 
+        plt.figure(figsize=(3,3))
+        try:
+            dat = data_list[image_index]
+            im = plt.imshow(dat,origin='lower')
+            plt.title(self.filenames[image_index],fontsize=10)        
+            self.file_titles.append(self.filenames[image_index])
+        except:
+            dat=np.random.random((200,200))
+            im = plt.imshow(dat,origin='lower')
+            plt.title(self.filenames[image_index]+' not a 2D image.',fontsize=6)
+            self.file_titles.append(self.filenames[image_index]+'.')
+
+        im_length = len(dat)
+
+        canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
+
+        canvas.mpl_connect('button_press_event',lambda event: self.plotClick(event, self.file_titles[image_index]))
+        canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, dat, im_length))
+
+        #create a label instance for the canvas window
+        self.label = canvas.get_tk_widget()
+        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)
+
+        self.change_colormap_manual = lambda: (im.set_cmap(self.color_entry.get()), canvas.draw())
+        self.add_colorwidget()
+
+        self.add_statusbar(image_index=image_index)
+
+        self.add_forward_button(image_index)
+        self.add_backward_button(image_index)
+
+    #define the 'back button' widget (see above for notes)    
+    def back(self,image_index):
+
+        self.label.delete('all')
+        plt.close()
+
+        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise,
+        #since python dislikes trying to plt.imshow a data table. 
+        plt.figure(figsize=(3,3))
+        try:
+            dat = data_list[image_index]
+            im = plt.imshow(dat,origin='lower')
+            plt.title(filenames[image_index],fontsize=10)
+            self.file_titles.append(filenames[image_index])
+        except:
+            dat=np.random.random((200,200))
+            im = plt.imshow(dat,origin='lower')
+            plt.title(filenames[image_index]+' not a 2D image.',fontsize=6)
+            self.file_titles.append(filenames[image_index]+'.')
+
+        im_length = len(dat)
+
+        canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display)
+        #binds left-click to extract the plot's x,y pixel coordinates, and the pixel value at these coordinates
+        canvas.mpl_connect('button_press_event',lambda event: plotClick(event, self.file_titles[image_index]))
+        canvas.mpl_connect('button_press_event',lambda event: plotValue(event,dat,im_length))
+
+        label = canvas.get_tk_widget()
+
+        button_forward = Button(frame_display, text='>>', font=self.helv20, fg='magenta', command=lambda: forward(image_index+1))
+        button_back = Button(frame_display, text='<<', font=self.helv20, fg='magenta', command=lambda: back(image_index-1))
+
+        if image_index == 0:
+            button_back = Button(frame_display, text='<<', font=self.helv20, state=tk.DISABLED)
+
+        change_colormap_manual = lambda: (im.set_cmap(e.get()), canvas.draw())
+        color_button = Button(frame_widgets, text='Set Manual Color Scheme', font=self.helv20, command=change_colormap_manual)
+        color_button.grid(row=1,column=0)
+
+        status = Label(frame_display, text="Image {} of ".format(str(image_index+1))+self.n_images, bd=1, relief=tk.SUNKEN)
+
+        info_button = Button(frame_display, text='Click for Info',padx=15,pady=5,font='Ariel 10', command=popup)
+
+        label.grid(row=0,column=0,columnspan=3,rowspan=4)
+        button_back.grid(row=4,column=0)
+        button_forward.grid(row=4,column=2)
+        status.grid(row=5,column=0,columnspan=3,sticky=W+E)
+        info_button.grid(row=5,column=2,sticky='ne')
+
+    #create command function to print info popup message
+    #Different message types: showinfo, showwarning, showerror, askquestion, askokcancel, askyesno
+    def popup(self):
+        messagebox.showinfo('Unconventional README.md',self.textbox)
+
+    #create command function to extract coordinates aT ThE cLiCk Of A bUtToN
+    #filename is file_title[index] --> if file is valid, then "try" proceeds as normal. if invalid, then "except."
+    def plotClick(self, event, filename):
+        x = event.xdata
+        y = event.ydata
+
+        try:   #if x,y are within the plot bounds, then xdata and ydata will be floats; can round.
+            x = np.round(x,2)
+            y = np.round(y,2)
+
+            image = fits.open(filename)
+            #if im is .fits and not .fits.fz, use [0] instead of [1]
+            if filename[-3:] == '.fz':
+                header = image[1].header
+            else:
+                header = image[0].header
+            w=WCS(header)
+
+            RA, DEC = w.all_pix2world(x,y,0)
+
+            RA = np.round(RA,3)
+            DEC = np.round(DEC,3)
+
+            self.xy.config(text=f'({x}, {y})',font=self.helv20)
+            self.radec.config(text=f'({RA}, {DEC})',font=self.helv20)
+
+        except:   #if outside of plot bounds, then xdata and ydata are NoneTypes; cannot round.
+            self.xy.config(text=f'({x}, {y})',font=self.helv20)  
+            self.radec.config(text=f'({None}, {None})',font=self.helv20)
+
+    #create command function to extract a pixel value aT ThE cLiCk Of A bUtToN
+    def plotValue(self, event, im_dat, length):
+        x=event.xdata
+        y=event.ydata
+
+        try:
+            x = int(x)
+            y = int(y)
+            value = im_dat[y][x]
+        except:
+            value = 'None'
+
+        self.val.config(text=f'Pixel Value: {round(value,4)}',font=self.helv20)
+
+    #command function to save a figure as shown, placed in (on?) Desktop.
+    def saveFig(self):
+        plt.savefig(homedir+'/Desktop/'+str(self.png_name.get()),dpi=250)
         
     
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-    #app.destroy()
