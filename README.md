@@ -7,10 +7,11 @@ I have also created a GUI to examine 2D fits images in the user's current direct
 
 ULTIMATE AIM: create a user-interface for the sonification project (see the 'research' repository).
 
-~~~~~~~~~~
-
 To run: 
+
 > python display_fits_OOP.py
+
 Alternatively, 
+
 > ipython
 > %run _____/display_fits_OOP.py
