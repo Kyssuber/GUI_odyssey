@@ -67,34 +67,11 @@ class MainPage(tk.Frame):
         self.frame_buttons.grid(row=2,column=1)
         
         self.get_filedat()
-    
-        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise, since python dislikes trying to plt.imshow a data table. 
-        plt.figure(figsize=(3,3))
-        try:
-            dat = self.data_list[0]
-            im = plt.imshow(dat,origin='lower')
-            plt.title(self.filenames[0],fontsize=10)
-            self.file_titles.append(self.filenames[0])
-        except:
-            dat=np.random.random((200,200))
-            im = plt.imshow(dat,origin='lower')
-            plt.title(self.filenames[0]+' not a 2D image.',fontsize=6)
-            self.file_titles.append(self.filenames[0]+'.')
-        im_length = len(dat)
 
-        #set up canvas
-        canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display) 
+        self.initiate_canvas(image_index=0)
         
-        #binds left-click to extract the plot's x,y pixel coordinates, and the value at these coordinates
-        canvas.mpl_connect('button_press_event', lambda event: self.plotClick(event, self.file_titles[0]))
-        canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, dat, im_length))
-        
-        self.change_colormap_manual = lambda: (im.set_cmap(self.color_entry.get()), canvas.draw())
+        self.change_colormap_manual = lambda: (self.im.set_cmap(self.color_entry.get()), self.canvas.draw())
         self.add_colorwidget()
-        
-        #create a label instance for the canvas window
-        self.label = canvas.get_tk_widget()        
-        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)
         
         self.add_statusbar(image_index=0)
         self.add_entry_png()
@@ -126,6 +103,9 @@ class MainPage(tk.Frame):
         self.png_name = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', font='Arial 20')
         self.png_name.insert(0,'figurename.png')
         self.png_name.grid(row=0,column=0)
+        
+        self.png_button = tk.Button(self.frame_buttons,text='Save .PNG',padx=20,pady=10,font=self.helv20,command=self.saveFig)
+        self.png_button.grid(row=1,column=0)
     
     def add_statusbar(self,image_index):
         self.n_images = str(len(self.filenames))
@@ -172,32 +152,9 @@ class MainPage(tk.Frame):
         self.label.delete('all')
         plt.close()
 
-        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise,
-        #since python dislikes trying to plt.imshow a data table. 
-        plt.figure(figsize=(3,3))
-        try:
-            dat = data_list[image_index]
-            im = plt.imshow(dat,origin='lower')
-            plt.title(self.filenames[image_index],fontsize=10)        
-            self.file_titles.append(self.filenames[image_index])
-        except:
-            dat=np.random.random((200,200))
-            im = plt.imshow(dat,origin='lower')
-            plt.title(self.filenames[image_index]+' not a 2D image.',fontsize=6)
-            self.file_titles.append(self.filenames[image_index]+'.')
-
-        im_length = len(dat)
-
-        canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
-
-        canvas.mpl_connect('button_press_event',lambda event: self.plotClick(event, self.file_titles[image_index]))
-        canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, dat, im_length))
-
-        #create a label instance for the canvas window
-        self.label = canvas.get_tk_widget()
-        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)
-
-        self.change_colormap_manual = lambda: (im.set_cmap(self.color_entry.get()), canvas.draw())
+        self.initiate_canvas(image_index=image_index)
+        
+        self.change_colormap_manual = lambda: (self.im.set_cmap(self.color_entry.get()), self.canvas.draw())
         self.add_colorwidget()
 
         self.add_statusbar(image_index=image_index)
@@ -211,51 +168,38 @@ class MainPage(tk.Frame):
         self.label.delete('all')
         plt.close()
 
-        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise,
-        #since python dislikes trying to plt.imshow a data table. 
+        self.initiate_canvas(image_index=image_index)
+        
+        self.change_colormap_manual = lambda: (self.im.set_cmap(self.color_entry.get()), self.canvas.draw())
+        self.add_colorwidget()
+        
+        self.add_statusbar(image_index=image_index)
+        
+        self.add_forward_button(image_index)
+        self.add_backward_button(image_index)
+    
+    def initiate_canvas(self,image_index):
         plt.figure(figsize=(3,3))
         try:
-            dat = data_list[image_index]
-            im = plt.imshow(dat,origin='lower')
-            plt.title(filenames[image_index],fontsize=10)
-            self.file_titles.append(filenames[image_index])
+            self.dat=self.data_list[image_index]
+            self.im=plt.imshow(self.dat,origin='lower')
+            plt.title(self.filenames[image_index],fontsize=10)
+            self.file_titles.append(self.filenames[image_index])
         except:
-            dat=np.random.random((200,200))
-            im = plt.imshow(dat,origin='lower')
-            plt.title(filenames[image_index]+' not a 2D image.',fontsize=6)
-            self.file_titles.append(filenames[image_index]+'.')
-
-        im_length = len(dat)
-
-        canvas = FigureCanvasTkAgg(plt.gcf(), master=frame_display)
-        #binds left-click to extract the plot's x,y pixel coordinates, and the pixel value at these coordinates
-        canvas.mpl_connect('button_press_event',lambda event: plotClick(event, self.file_titles[image_index]))
-        canvas.mpl_connect('button_press_event',lambda event: plotValue(event,dat,im_length))
-
-        label = canvas.get_tk_widget()
-
-        button_forward = Button(frame_display, text='>>', font=self.helv20, fg='magenta', command=lambda: forward(image_index+1))
-        button_back = Button(frame_display, text='<<', font=self.helv20, fg='magenta', command=lambda: back(image_index-1))
-
-        if image_index == 0:
-            button_back = Button(frame_display, text='<<', font=self.helv20, state=tk.DISABLED)
-
-        change_colormap_manual = lambda: (im.set_cmap(e.get()), canvas.draw())
-        color_button = Button(frame_widgets, text='Set Manual Color Scheme', font=self.helv20, command=change_colormap_manual)
-        color_button.grid(row=1,column=0)
-
-        status = Label(frame_display, text="Image {} of ".format(str(image_index+1))+self.n_images, bd=1, relief=tk.SUNKEN)
-
-        info_button = Button(frame_display, text='Click for Info',padx=15,pady=5,font='Ariel 10', command=popup)
-
-        label.grid(row=0,column=0,columnspan=3,rowspan=4)
-        button_back.grid(row=4,column=0)
-        button_forward.grid(row=4,column=2)
-        status.grid(row=5,column=0,columnspan=3,sticky=W+E)
-        info_button.grid(row=5,column=2,sticky='ne')
-
+            self.dat=np.random.random((200,200))
+            self.im=plt.imshow(self.dat,origin='lower')
+            plt.title(self.filenames[image_index]+' not a 2D image.',fontsize=6)
+            self.file_titles.append(self.filenames[image_index]+'.')
+        im_length = len(self.dat)
+        
+        self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
+        self.canvas.mpl_connect('button_press_event',lambda event: self.plotClick(event, self.file_titles[image_index]))
+        self.canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, self.dat, im_length))
+        
+        self.label = self.canvas.get_tk_widget()
+        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)    
+             
     #create command function to print info popup message
-    #Different message types: showinfo, showwarning, showerror, askquestion, askokcancel, askyesno
     def popup(self):
         messagebox.showinfo('Unconventional README.md',self.textbox)
 
@@ -264,11 +208,9 @@ class MainPage(tk.Frame):
     def plotClick(self, event, filename):
         x = event.xdata
         y = event.ydata
-
         try:   #if x,y are within the plot bounds, then xdata and ydata will be floats; can round.
             x = np.round(x,2)
             y = np.round(y,2)
-
             image = fits.open(filename)
             #if im is .fits and not .fits.fz, use [0] instead of [1]
             if filename[-3:] == '.fz':
@@ -276,15 +218,11 @@ class MainPage(tk.Frame):
             else:
                 header = image[0].header
             w=WCS(header)
-
             RA, DEC = w.all_pix2world(x,y,0)
-
             RA = np.round(RA,3)
             DEC = np.round(DEC,3)
-
             self.xy.config(text=f'({x}, {y})',font=self.helv20)
             self.radec.config(text=f'({RA}, {DEC})',font=self.helv20)
-
         except:   #if outside of plot bounds, then xdata and ydata are NoneTypes; cannot round.
             self.xy.config(text=f'({x}, {y})',font=self.helv20)  
             self.radec.config(text=f'({None}, {None})',font=self.helv20)
@@ -293,21 +231,48 @@ class MainPage(tk.Frame):
     def plotValue(self, event, im_dat, length):
         x=event.xdata
         y=event.ydata
-
         try:
             x = int(x)
             y = int(y)
             value = im_dat[y][x]
         except:
             value = 'None'
-
         self.val.config(text=f'Pixel Value: {round(value,4)}',font=self.helv20)
 
     #command function to save a figure as shown, placed in (on?) Desktop.
     def saveFig(self):
-        plt.savefig(homedir+'/Desktop/'+str(self.png_name.get()),dpi=250)
-        
+        plt.savefig(os.getenv("HOME")+'/Desktop/'+str(self.png_name.get()),dpi=250)  
     
 if __name__ == "__main__":
     app = App()
     app.mainloop()
+    
+    
+    
+    
+'''    
+        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise,
+        #since python dislikes trying to plt.imshow a data table. 
+
+        plt.figure(figsize=(3,3))
+        try:
+            dat = self.data_list[image_index]
+            im = plt.imshow(dat,origin='lower')
+            plt.title(self.filenames[image_index],fontsize=10)
+            self.file_titles.append(self.filenames[image_index])
+        except:
+            dat=np.random.random((200,200))
+            im = plt.imshow(dat,origin='lower')
+            plt.title(self.filenames[image_index]+' not a 2D image.',fontsize=6)
+            self.file_titles.append(self.filenames[image_index]+'.')
+
+        im_length = len(dat)
+
+        canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
+        
+        canvas.mpl_connect('button_press_event',lambda event: self.plotClick(event, self.file_titles[image_index]))
+        canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, self.dat, im_length))
+        
+        self.label = canvas.get_tk_widget()
+        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)
+'''
