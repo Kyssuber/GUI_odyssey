@@ -14,4 +14,5 @@ To run:
 Alternatively, 
 
 > ipython
+> 
 > %run _____/display_fits_OOP.py
