@@ -49,7 +49,7 @@ class MainPage(tk.Frame):
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
         
-        self.textbox="GOAL: display and loop through all .fits files (if any) in user directory. Gnarly features: status label, forward/back buttons in order to browse images, usw. In color scheme textbox, type a matplotlib color arg (e.g., rainbow, viridis, gray, cool), then click the button widget underneath. The user can do likewise with the save feature, replacing the entry text with the desired filename.png to save a .PNG of the current canvas display to the Desktop. Lastly, the canvas is click-interactive: left-click on an image pixel, and the output will modify the pixel's Cartesian coordinates, its RA and DEC coordinates, and its pixel value in the bottom-right frame."
+        self.textbox="GOAL: display and loop through all .fits files (if any) in user directory. \n Gnarly features: status label, forward/back buttons in order to browse images, usw. \n In color scheme textbox, type a matplotlib color arg (e.g., rainbow, viridis, gray, cool), then click the button widget underneath. \n The user can do likewise with the save feature, replacing the entry text with the desired filename.png to save a .PNG of the current canvas display to the Desktop. \n Lastly, the canvas is click-interactive: left-click on an image pixel, and the output will modify the pixel's Cartesian coordinates, its RA and DEC coordinates, and its pixel value in the bottom-right frame."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -142,7 +142,7 @@ class MainPage(tk.Frame):
         self.button_back.grid(row=4,column=0)
             
     def add_info_button(self):
-        self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15,pady=10,font='Ariel 20', command=self.popup)
+        self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15, pady=10, font='Ariel 20', command=self.popup)
         self.info_button.grid(row=4,column=1)
    
     #define the 'forward button widget'
@@ -190,27 +190,38 @@ class MainPage(tk.Frame):
             self.im=plt.imshow(self.dat,origin='lower')
             plt.title(self.filenames[image_index]+' not a 2D image.',fontsize=6)
             self.file_titles.append(self.filenames[image_index]+'.')
-        im_length = len(self.dat)
+        im_length = np.shape(self.dat)[0]
+        
+        self.current_marker = plt.scatter(im_length/2,im_length/3,s=1,color='None')
         
         self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
-        self.canvas.mpl_connect('button_press_event',lambda event: self.plotClick(event, self.file_titles[image_index]))
+        self.canvas.mpl_connect('button_press_event',lambda event: self.plotCoord(event, self.file_titles[image_index]))
         self.canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, self.dat, im_length))
-        
+               
+        self.canvas.mpl_connect('button_press_event', self.markCursor)
+ 
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=4)    
-             
+    
     #create command function to print info popup message
     def popup(self):
         messagebox.showinfo('Unconventional README.md',self.textbox)
-
+    
+    def markCursor(self, event):
+        x=event.xdata
+        y=event.ydata
+        self.current_marker.remove()
+        self.current_marker = plt.scatter(x,y,s=15,facecolors='none',edgecolors='r',linewidths=1)
+        self.canvas.draw()
+    
     #create command function to extract coordinates aT ThE cLiCk Of A bUtToN
     #filename is file_title[index] --> if file is valid, then "try" proceeds as normal. if invalid, then "except."
-    def plotClick(self, event, filename):
+    def plotCoord(self, event, filename):
         x = event.xdata
         y = event.ydata
         try:   #if x,y are within the plot bounds, then xdata and ydata will be floats; can round.
-            x = np.round(x,2)
-            y = np.round(y,2)
+            x = np.round(x,3)
+            y = np.round(y,3)
             image = fits.open(filename)
             #if im is .fits and not .fits.fz, use [0] instead of [1]
             if filename[-3:] == '.fz':
@@ -235,9 +246,10 @@ class MainPage(tk.Frame):
             x = int(x)
             y = int(y)
             value = im_dat[y][x]
+            self.val.config(text='Pixel Value: %0.2f'%value,font=self.helv20)
         except:
             value = 'None'
-        self.val.config(text=f'Pixel Value: {round(value,4)}',font=self.helv20)
+            self.val.config(text='Pixel Value: None',font=self.helv20)     
 
     #command function to save a figure as shown, placed in (on?) Desktop.
     def saveFig(self):
@@ -270,7 +282,7 @@ if __name__ == "__main__":
 
         canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
         
-        canvas.mpl_connect('button_press_event',lambda event: self.plotClick(event, self.file_titles[image_index]))
+        canvas.mpl_connect('button_press_event',lambda event: self.plotCoord(event, self.file_titles[image_index]))
         canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, self.dat, im_length))
         
         self.label = canvas.get_tk_widget()
