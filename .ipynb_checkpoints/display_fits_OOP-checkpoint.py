@@ -1,5 +1,5 @@
 '''
-GOAL: re-format display_fits_RADEC.py in a more readable format.
+GOAL: re-format display_fits.py in a more readable format.
 Layout adopted from https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
@@ -13,6 +13,7 @@ from astropy.wcs import WCS
 from tkinter import font as tkFont
 from tkinter import messagebox
 
+#create main window container, into which the first page will be placed.
 class App(tk.Tk):
     
     def __init__(self, *args, **kwargs):          #INITIALIZE; will always run when App class is called.
@@ -34,11 +35,11 @@ class App(tk.Tk):
         self.frames[MainPage] = frame     #assign new dictionary entry {MainPage: frame}
         frame.grid(row=0,column=0,sticky='nsew')   #define where to place frame within the container...CENTER!
         
-        self.show_frame(MainPage)  #a method to be defined below
+        self.show_frame(MainPage)  #a method to be defined below (see MainPage class)
     
-    def show_frame(self, cont):     #cont represents the controller, enables switching between frames/windows
+    def show_frame(self, cont):     #'cont' represents the controller, enables switching between frames/windows...I think.
         frame = self.frames[cont]
-        frame.tkraise()   #will raise window/frame to the 'front'
+        frame.tkraise()   #will raise window/frame to the 'front;' if there is more than one frame, quite handy.
         
         
 #inherits all from tk.Frame; will be on first window
@@ -54,15 +55,19 @@ class MainPage(tk.Frame):
         #first frame...
         tk.Frame.__init__(self,parent)
         
+        #create display frame, which will hold the canvas and a few button widgets underneath.
         self.frame_display=tk.LabelFrame(self,text='Display',font='Vendana 15',padx=5,pady=5)
         self.frame_display.grid(row=0,column=0,rowspan=10)
         
+        #create widgets frame, which currently only holds the color display editor.
         self.frame_widgets=tk.LabelFrame(self,text='Edit Color',padx=2,pady=2)
         self.frame_widgets.grid(row=0,column=1)
         
+        #create coord frame, which holds the event labels for the x,y coordinates, RA,DEC coordinates, and the pixel value.
         self.frame_coord=tk.LabelFrame(self,text='Image Coords and Value',padx=5,pady=5)
         self.frame_coord.grid(row=5,column=1,sticky='se')
         
+        #create buttons frame, which currently only holds the 'save' button and entry box.
         self.frame_buttons=tk.LabelFrame(self,text='Features',padx=5,pady=5)
         self.frame_buttons.grid(row=2,column=1)
         
@@ -258,33 +263,3 @@ class MainPage(tk.Frame):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-    
-    
-    
-    
-'''    
-        #some .fits files in the directory may not be 2D images; in this case, I simply plot a 200x200 matrix of noise,
-        #since python dislikes trying to plt.imshow a data table. 
-
-        plt.figure(figsize=(3,3))
-        try:
-            dat = self.data_list[image_index]
-            im = plt.imshow(dat,origin='lower')
-            plt.title(self.filenames[image_index],fontsize=10)
-            self.file_titles.append(self.filenames[image_index])
-        except:
-            dat=np.random.random((200,200))
-            im = plt.imshow(dat,origin='lower')
-            plt.title(self.filenames[image_index]+' not a 2D image.',fontsize=6)
-            self.file_titles.append(self.filenames[image_index]+'.')
-
-        im_length = len(dat)
-
-        canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)
-        
-        canvas.mpl_connect('button_press_event',lambda event: self.plotCoord(event, self.file_titles[image_index]))
-        canvas.mpl_connect('button_press_event',lambda event: self.plotValue(event, self.dat, im_length))
-        
-        self.label = canvas.get_tk_widget()
-        self.label.grid(row=0,column=0,columnspan=3,rowspan=4)
-'''
