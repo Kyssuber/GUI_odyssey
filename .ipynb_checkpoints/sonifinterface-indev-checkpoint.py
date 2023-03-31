@@ -7,7 +7,6 @@ import numpy as np
 import os
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import pyplot as plt
-from matplotlib import animation, rc
 from astropy.io import fits
 from astropy.wcs import WCS
 from tkinter import font as tkFont
@@ -69,7 +68,7 @@ class MainPage(tk.Frame):
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
         
-        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n"
+        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n \n GENERAL INSTRUCTIONS: \n \n (1) Enter filepath into the top entry box click 'Browse' in order to search your local machine's good ol' inventory. Then click 'Enter'. \n \n (2) Clicking 'Sonify!' will create consecutive vertical strips of pixels, calculate the mean value of each band, and map the resulting array of means to a MIDI note which is ultimately translated into a piano key. [Presently, the only chord available is D-major.] The full sonification will play automatically upon clicking the button, using the default y scale (scales the mean pixel data, ydata**yscale), min and max velocities (the min and max volume, respectively, ranging from 0 to 127), and the BPM (beats per minute -- higher BPM begets a speedier tune). The user can edit these values to manipulate the sound, clicking 'Sonify!' once more to audibly harvest the outcome of their fiddling. \n \n (3) Left-clicking the figure to the left will allow the user to visualize an individual column of sonified pixels (red bar), as well as simultaneously hear the MIDI note corresponding to the mean pixel value of that column. The bottom-right widget of the GUI handily displays this mean value if the user is so inclined to know. \n \n (4) If the user wishes to view another galaxy, they may click 'Browse' to find a second FITS file and go wild. I certainly cannot thwart their efforts, for I am a simple text box."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -110,7 +109,7 @@ class MainPage(tk.Frame):
         '''
         self.initiate_vals()
         self.add_info_button()
-        self.add_midi_button()
+        self.create_soni_widget()
         
     def initiate_vals(self):
         self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Ariel 20')
@@ -122,10 +121,36 @@ class MainPage(tk.Frame):
         self.path_to_im.grid(row=0,column=0,columnspan=2)
         self.add_browse_button()
         self.add_enter_button()
+        
+    def create_soni_widget(self):
+        
+        #create all entry textboxes (with labels and initial values), midi button
+        
+        ylab = tk.Label(self.frame_soni,text='yscale').grid(row=0,column=0)
+        self.y_scale_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.y_scale_entry.insert(0,'0.5')
+        self.y_scale_entry.grid(row=0,column=1,columnspan=1)
+        
+        vmin_lab = tk.Label(self.frame_soni,text='Min Velocity').grid(row=1,column=0)
+        self.vel_min_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.vel_min_entry.insert(0,'10')
+        self.vel_min_entry.grid(row=1,column=1,columnspan=1)
+        
+        vmax_lab = tk.Label(self.frame_soni,text='Max Velocity').grid(row=2,column=0)
+        self.vel_max_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.vel_max_entry.insert(0,'100')
+        self.vel_max_entry.grid(row=2,column=1,columnspan=1)
+        
+        bpm_lab = tk.Label(self.frame_soni,text='BPM').grid(row=3,column=0)
+        self.bpm_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.bpm_entry.insert(0,'35')
+        self.bpm_entry.grid(row=3,column=1,columnspan=1)
+        
+        self.add_midi_button()
 
     def add_info_button(self):
         self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15, pady=10, font='Ariel 20', command=self.popup)
-        self.info_button.grid(row=4,column=1)
+        self.info_button.grid(row=8,column=1)
     
     def add_browse_button(self):
         self.button_explore = tk.Button(self.frame_buttons ,text="Browse", padx=20, pady=10, font=self.helv20, command=self.browseFiles)
@@ -137,7 +162,7 @@ class MainPage(tk.Frame):
     
     def add_midi_button(self):
         self.midi_button = tk.Button(self.frame_soni, text='Sonify!', padx=20, pady=10, font=self.helv20, command=self.midi_setup)
-        self.midi_button.grid(row=0,column=0)
+        self.midi_button.grid(row=5,column=0,columnspan=2)
     
     def initiate_canvas(self):
         self.dat = fits.getdata(str(self.path_to_im.get()))
@@ -160,7 +185,6 @@ class MainPage(tk.Frame):
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
-        
     
     #create command function to print info popup message
     def popup(self):
@@ -198,7 +222,8 @@ class MainPage(tk.Frame):
     
 ##########
 #the sonification-specific functions...
-    
+##########
+
     #typical sonification mapping function; maps value(s) from one range to another range; returns floats
     def map_value(self, value, min_value, max_value, min_result, max_result):
         result = min_result + (value - min_value)/(max_value - min_value)*(max_result - min_result)
@@ -207,11 +232,11 @@ class MainPage(tk.Frame):
     def midi_setup(self):
         
         #define various quantities required for midi file generation
-        self.y_scale = 0.5
+        self.y_scale = float(self.y_scale_entry.get())
         self.strips_per_beat = 10
-        self.vel_min = 10
-        self.vel_max = 100
-        self.bpm = 35
+        self.vel_min = int(self.vel_min_entry.get())
+        self.vel_max = int(self.vel_max_entry.get())
+        self.bpm = int(self.bpm_entry.get())
         self.note_names = 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5-D6'   #D-major
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
         self.soundfont = '/opt/anaconda3/share/soundfonts/FluidR3_GM.sf2'
@@ -250,8 +275,7 @@ class MainPage(tk.Frame):
             note_velocity = round(self.map_value(y_data_scaled[i],0,1,self.vel_min,self.vel_max)) #larger values, heavier sound
             self.vel_data.append(note_velocity)
         
-        self.midi_allnotes()
-        
+        self.midi_allnotes() 
         
     def midi_allnotes(self):
         #create midi file object, add tempo
@@ -262,10 +286,7 @@ class MainPage(tk.Frame):
         #add midi notes to file
         for i in range(len(self.t_data)):
             midi_file.addNote(track=0, channel=0, pitch=self.midi_data[i], time=self.t_data[i], duration=2, volume=self.vel_data[i])
-
         midi_file.writeFile(self.memfile)
-        #with open(homedir+'/Desktop/test.mid',"wb") as f:
-        #    self.midi_file.writeFile(f)
         
         mixer.init()
         self.memfile.seek(0)
@@ -287,7 +308,7 @@ class MainPage(tk.Frame):
         #    self.midi_file.writeFile(f)
         
         mixer.init()
-        self.memfile.seek(0)
+        self.memfile.seek(0)   #for whatever reason, have to manually 'rewind' the track in order for mixer to play
         mixer.music.load(self.memfile)
         mixer.music.play()       
         
