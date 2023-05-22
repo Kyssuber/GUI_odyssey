@@ -7,11 +7,14 @@ import numpy as np
 import os
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import pyplot as plt
+from scipy.stats import scoreatpercentile
+from astropy.visualization import simple_norm
 from astropy.io import fits
 from astropy.wcs import WCS
 from tkinter import font as tkFont
 from tkinter import messagebox
 from tkinter import filedialog
+import glob
 
 import sys
 from midiutil import MIDIFile
@@ -68,7 +71,7 @@ class MainPage(tk.Frame):
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
         
-        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n \n GENERAL INSTRUCTIONS: \n \n (1) Enter filepath into the top entry box click 'Browse' in order to search your local machine's good ol' inventory. Then click 'Enter'. \n \n (2) Clicking 'Sonify!' will create consecutive vertical strips of pixels, calculate the mean value of each band, and map the resulting array of means to a MIDI note which is ultimately translated into a piano key. [Presently, the only chord available is D-major.] The full sonification will play automatically upon clicking the button, using the default y scale (scales the mean pixel data, ydata**yscale), min and max velocities (the min and max volume, respectively, ranging from 0 to 127), and the BPM (beats per minute -- higher BPM begets a speedier tune). The user can edit these values to manipulate the sound, clicking 'Sonify!' once more to audibly harvest the outcome of their fiddling. \n \n (3) Left-clicking the figure to the left will allow the user to visualize an individual column of sonified pixels (red bar), as well as simultaneously hear the MIDI note corresponding to the mean pixel value of that column. The bottom-right widget of the GUI handily displays this mean value if the user is so inclined to know. \n \n (4) If the user wishes to view another galaxy, they may click 'Browse' to find a second FITS file and go wild. I certainly cannot thwart their efforts, for I am a simple text box."
+        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n \n GENERAL INSTRUCTIONS: \n \n (1) Enter filepath into the top entry box click 'Browse' in order to search your local machine's good ol' inventory. Then click 'Enter'. \n \n (2) Clicking 'Sonify!' will create consecutive vertical strips of pixels, calculate the mean value of each band, and map the resulting array of means to a MIDI note which is ultimately translated into a piano key. [Presently, the only chord available is D-major.] The full sonification will play automatically upon clicking the button, using the default y scale (scales the mean pixel data, ydata**yscale), min and max velocities (the min and max volume, respectively, ranging from 0 to 127), the BPM (beats per minute -- higher BPM begets a speedier tune), and the min and max xrange. The user can edit these values to manipulate the sound, clicking 'Sonify!' once more to audibly harvest the outcome of their fiddling. \n \n (3) Left-clicking the figure to the left will allow the user to visualize an individual column of sonified pixels (red bar), as well as simultaneously hear the MIDI note corresponding to the mean pixel value of that column. The bottom-right widget of the GUI handily displays this mean value if the user is so inclined to know. \n \n (4) If the user wishes to view another galaxy, they may click 'Browse' to find a second FITS file and go wild. I certainly cannot thwart their efforts, for I am a simple text box."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -109,7 +112,7 @@ class MainPage(tk.Frame):
         '''
         self.initiate_vals()
         self.add_info_button()
-        self.create_soni_widget()
+        self.populate_soni_widget()
         
     def initiate_vals(self):
         self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Ariel 20')
@@ -122,7 +125,9 @@ class MainPage(tk.Frame):
         self.add_browse_button()
         self.add_enter_button()
         
-    def create_soni_widget(self):
+    def populate_soni_widget(self):
+        
+        self.add_midi_button()
         
         #create all entry textboxes (with labels and initial values), midi button
         
@@ -146,7 +151,15 @@ class MainPage(tk.Frame):
         self.bpm_entry.insert(0,'35')
         self.bpm_entry.grid(row=3,column=1,columnspan=1)
         
-        self.add_midi_button()
+        xmin_lab = tk.Label(self.frame_soni,text='xmin').grid(row=4,column=0)
+        self.xmin_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.xmin_entry.insert(0,'starting xpx')
+        self.xmin_entry.grid(row=4,column=1,columnspan=1)
+        
+        xmax_lab = tk.Label(self.frame_soni,text='xmax').grid(row=5,column=0)
+        self.xmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.xmax_entry.insert(0,'ending xpx')
+        self.xmax_entry.grid(row=5,column=1,columnspan=1)
 
     def add_info_button(self):
         self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15, pady=10, font='Ariel 20', command=self.popup)
@@ -162,13 +175,45 @@ class MainPage(tk.Frame):
     
     def add_midi_button(self):
         self.midi_button = tk.Button(self.frame_soni, text='Sonify!', padx=20, pady=10, font=self.helv20, command=self.midi_setup)
-        self.midi_button.grid(row=5,column=0,columnspan=2)
+        self.midi_button.grid(row=6,column=0,columnspan=2)
     
     def initiate_canvas(self):
         self.dat = fits.getdata(str(self.path_to_im.get()))
+        
+        #many cutouts, especially those in the r-band, have pesky foreground stars and other artifacts, which will invariably dominate the display of the image stretch. one option is that I can grab the corresponding mask image for the galaxy and create a 'mask bool' of 0s and 1s, then multiply this by the image in order to dictate v1, v2, and the normalization *strictly* on the central galaxy pixel values. 
+        
+        full_filepath = str(self.path_to_im.get()).split('/')
+        full_filename = full_filepath[-1]
+        split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
+        print(split_filename)
+        galaxyname = split_filename[0]
+        galaxyband = split_filename[3]
+        try:
+            if str(galaxyband)=='r':
+                mask_path = glob.glob('/Users/k215c316/vf_html_mask/all_input_fits/'+galaxyname+'*'+'r-mask.fits')[0]
+            if galaxyband=='W3':
+                mask_path = glob.glob('/Users/k215c316/vf_html_mask/all_input_fits/'+galaxyname+'*'+'wise-mask.fits')[0]
+            mask_image = fits.getdata(mask_path)
+            self.mask_bool = ~(mask_image>0)
+        
+        except:
+            self.mask_bool = np.zeros((len(self.dat),len(self.dat)))+1
+            print('Mask image not found; proceeded with default v1, v2, and normalization values.')
+        
+        v1 = scoreatpercentile(self.dat*self.mask_bool,0.5)
+        v2 = scoreatpercentile(self.dat*self.mask_bool,99.9)
+        norm_im = simple_norm(self.dat*self.mask_bool,'asinh', min_percent=0.5, max_percent=99.9,
+                              min_cut=v1, max_cut=v2)  #'beautify' the image
+        
         plt.figure(figsize=(5,5))
-        self.im=plt.imshow(self.dat,origin='lower')
-        plt.title(self.path_to_im.get(),fontsize=10)
+        self.im = plt.imshow(self.dat,origin='lower',norm=norm_im)
+        
+        #trying to extract a meaningful figure title from the path information
+        filename=self.path_to_im.get().split('/')[-1]  #split str into list, let delimiter=/, isolate filename
+        galaxy_name=filename.split('-')[0]  #galaxy name is first item in filename split list
+        band=filename.split('-')[-1].split('.')[0]  #last item in filename list is band.fits; split into two components, isolate the first
+        
+        plt.title(f'{galaxy_name} ({band})',fontsize=15)
 
         self.im_length = np.shape(self.dat)[0]
         self.y_min = int(self.im_length/2-(0.20*self.im_length))
@@ -214,9 +259,12 @@ class MainPage(tk.Frame):
             print('Click inside of the image!')
             self.val.config(text='Pixel Value: None', font='Ariel 16')
     
+    def placeSq(self, event):
+        return
+    
     # Function for opening the file explorer window
     def browseFiles(self):
-        filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
+        filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_mask/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
         self.path_to_im.delete(0,tk.END)
         self.path_to_im.insert(0,filename)        
     
@@ -237,18 +285,28 @@ class MainPage(tk.Frame):
         self.vel_min = int(self.vel_min_entry.get())
         self.vel_max = int(self.vel_max_entry.get())
         self.bpm = int(self.bpm_entry.get())
+        try:
+            self.xmin = int(self.xmin_entry.get())
+            self.xmax = int(self.xmax_entry.get())
+        except:
+            self.xmin=0
+            self.xmax=self.im_length
+            self.xmin_entry.delete(0,tk.END)
+            self.xmin_entry.insert(0,'0')
+            self.xmax_entry.delete(0,tk.END)
+            self.xmax_entry.insert(0,str(self.im_length))
+        
         self.note_names = 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5-D6'   #D-major
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
         self.soundfont = '/opt/anaconda3/share/soundfonts/FluidR3_GM.sf2'
         
         band = self.dat[:,self.y_min:self.y_max]   #isolates pixels within horizontal band across the image from y_min to y_max
         strips = []   #create empty array for 1px strips
-        mean_strip_values = np.zeros(self.im_length)
-        
-        for i in range(self.im_length):
+        mean_strip_values = np.zeros(self.xmax-self.xmin)
+        print(self.xmin,self.xmax)
+        for i in range(self.xmin,self.xmax):
             strips.append(band[i,:])   #individual vertical strips
-            mean_strip_values[i] = np.mean(strips[i])   #the 'ydata'
-        
+            mean_strip_values[i-self.xmin] = np.mean(strips[i-self.xmin])   #the 'ydata'; self.xmin-i for correct indices
         #rescale strip number to beats
         self.t_data = np.arange(0,len(mean_strip_values),1) / self.strips_per_beat   #convert to 'time' steps
         duration_beats=np.max(self.t_data)   #duration is end of the t_data list, or the max value in this list
@@ -301,7 +359,13 @@ class MainPage(tk.Frame):
         midi_file.addTrackName(0,0,'Note')
         midi_file.addTempo(track=0, time=0, tempo=self.bpm)
         
-        midi_file.addNote(track=0, channel=0, pitch=self.midi_data[self.x], time=self.t_data[1], duration=2, volume=self.vel_data[self.x])
+        #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes between arrays of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
+        cushion_left = np.zeros(self.xmin)
+        cushion_right = np.zeros(self.xmax - (self.xmin+len(self.midi_data)))
+        midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data,cushion_right]))
+        vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data,cushion_right]))
+
+        midi_file.addNote(track=0, channel=0, pitch=int(midi_edited[self.x]), time=self.t_data[1], duration=2, volume=int(vel_edited[self.x]))
         
         midi_file.writeFile(self.memfile)
         #with open(homedir+'/Desktop/test.mid',"wb") as f:
