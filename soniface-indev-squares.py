@@ -87,24 +87,34 @@ class MainPage(tk.Frame):
         
         #create buttons frame, which currently only holds the 'save' button, 'browse' button, and entry box.
         self.frame_buttons=tk.LabelFrame(self,text='File Browser',padx=5,pady=5)
-        self.frame_buttons.grid(row=2,column=1)
+        self.frame_buttons.grid(row=2,column=1,columnspan=2)
         for i in range(self.rowspan):
             self.frame_buttons.columnconfigure(i, weight=1)
             self.frame_buttons.rowconfigure(i, weight=1)
             
         #create soni frame, which holds the event button for converting data into sound (midifile).
+        #there are also heaps of text boxes with which the user can manipulate the sound conversion parameters
         self.frame_soni=tk.LabelFrame(self,padx=5,pady=5)
-        self.frame_soni.grid(row=6,column=1,sticky='se')
+        self.frame_soni.grid(row=6,column=2,sticky='se')
         for i in range(self.rowspan):
             self.frame_soni.columnconfigure(i, weight=1)
             self.frame_soni.rowconfigure(i, weight=1)
         
-        #create coord frame, which holds the event labels for the mean pixel value.
+        #create value frame, which holds the event labels for the mean pixel value.
         self.frame_value=tk.LabelFrame(self,padx=5,pady=5)
-        self.frame_value.grid(row=4,column=1,sticky='se')
+        self.frame_value.grid(row=4,column=2,sticky='se')
         for i in range(self.rowspan):
             self.frame_value.columnconfigure(i, weight=1)
             self.frame_value.rowconfigure(i, weight=1)
+        
+        #create box frame --> check boxes for lines vs. squares when interacting with the figure canvas
+        self.frame_box = tk.LabelFrame(self,padx=5,pady=5)
+        self.frame_box.grid(row=6,column=1,sticky='s')
+        for i in range(self.rowspan):
+            self.frame_box.columnconfigure(i, weight=1)
+            self.frame_box.rowconfigure(i, weight=1)
+            tk.Label(self.frame_box,text='yscale').grid(row=0,column=0)
+        
         
         self.galaxy_to_display()
         '''
@@ -113,7 +123,16 @@ class MainPage(tk.Frame):
         self.initiate_vals()
         self.add_info_button()
         self.populate_soni_widget()
-        
+        self.populate_box_widget()
+    
+    def populate_box_widget(self):
+        self.var = tk.IntVar()
+        c1 = tk.Radiobutton(self.frame_box, text='Motion Notify Event',variable=self.var, 
+                            value=1,command=self.change_canvas_event).grid(row=0,column=0)
+        c2 = tk.Radiobutton(self.frame_box, text='Button Press Event',variable=self.var, value=2, 
+                            command=self.change_canvas_event).grid(row=1,column=0)
+        print(self.var.get())
+    
     def initiate_vals(self):
         self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Ariel 20')
         self.val.grid(row=0,column=0)
@@ -184,7 +203,7 @@ class MainPage(tk.Frame):
         self.path_button.grid(row=1,column=1)
     
     def add_midi_button(self):
-        self.midi_button = tk.Button(self.frame_soni, text='Sonify!', padx=20, pady=10, font=self.helv20, command=self.midi_setup)
+        self.midi_button = tk.Button(self.frame_soni, text='Sonify!', padx=20, pady=10, font=self.helv20, command=self.midi_setup_bar)
         self.midi_button.grid(row=8,column=0,columnspan=2)
     
     def initiate_canvas(self):
@@ -229,16 +248,51 @@ class MainPage(tk.Frame):
         self.y_max = int(self.im_length/2+(0.20*self.im_length))
         self.x=self.im_length/2
         
-        self.current_bar=plt.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
+        self.current_square=plt.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
         self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)    
-        self.canvas.mpl_connect('button_press_event', self.placeBar)
-        try:
-            self.canvas.mpl_connect('button_press_event', self.midi_singlenote)
-        except:
-            print('Sonify first!')
+        
+        if int(self.var.get())==1:
+            self.connect_event=self.canvas.mpl_connect('motion_notify_event', self.placeSq)
+            try:
+                self.connect_event2=self.canvas.mpl_connect('motion_notify_event', self.midi_square)
+            except AttributeError:
+                print('Sonify first!')
+        elif int(self.var.get())==2:
+            self.connect_event=self.canvas.mpl_connect('button_press_event',self.placeSq)
+            try:
+                self.connect_event2=self.canvas.mpl_connect('button_press_event', self.midi_square)
+            except AttributeError:
+                print('Sonify first!')      
+        
+        else:
+            print('Defaulting to motion notify event.')
+            self.connect_event=self.canvas.mpl_connect('motion_notify_event', self.placeSq)
+            try:
+                self.connect_event2=self.canvas.mpl_connect('motion_notify_event', self.midi_square)
+            except AttributeError:
+                print('Sonify first!')
+            
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
+    
+    def change_canvas_event(self):
+        if int(self.var.get())==1:
+            self.canvas.mpl_disconnect(self.connect_event)
+            self.connect_event = self.canvas.mpl_connect('motion_notify_event', self.placeSq)
+            try:
+                self.canvas.mpl_disconnect(self.connect_event2)
+                self.connect_event2 = self.canvas.mpl_connect('motion_notify_event', self.midi_square)
+            except AttributeError:
+                print('Sonify first!')
+        if int(self.var.get())==2:
+            self.canvas.mpl_disconnect(self.connect_event)
+            self.canvas.mpl_connect('button_press_event',self.placeSq)
+            try:
+                self.canvas.mpl_disconnect(self.connect_event2)
+                self.connect_event2 = self.canvas.mpl_connect('button_press_event', self.midi_square)
+            except AttributeError:
+                print('Sonify first!')  
     
     #create command function to print info popup message
     def popup(self):
@@ -246,8 +300,8 @@ class MainPage(tk.Frame):
     
     def placeBar(self, event):  
         self.x=int(event.xdata)
-        #if user clicks outside the image bounds, then x is NoneType. y cannot be None, by design. only need to check x.
-        if self.x is not None:
+        #if user clicks (or hovers) outside the image bounds, then x is NoneType. y cannot be None, by design. only need to check x.
+        if event.inaxes:
             #re-plot bar
             line_x = np.zeros(150)+self.x
             line_y = np.linspace(self.y_min,self.y_max,150)       
@@ -269,7 +323,32 @@ class MainPage(tk.Frame):
             self.val.config(text='Pixel Value: None', font='Ariel 16')
     
     def placeSq(self, event):
-        return
+        self.x=int(event.xdata)
+        self.y=int(event.ydata)
+        if event.inaxes:
+            sq_length=int(self.im_length/20)
+            
+            self.current_square.remove()
+            self.current_square = plt.Rectangle((self.x,self.y), sq_length, sq_length, fc='none', 
+                                                ec='red', linewidth=2)
+            plt.gca().add_patch(self.current_square)
+            
+            if (self.x+sq_length <= self.im_length) & (self.y+sq_length <= self.im_length):   #a check to ensure the square doesn't go beyond the image bounds
+                px_in_sq = self.dat[self.x:self.x+sq_length, self.y:self.y+sq_length]
+            elif (self.x+sq_length > self.im_length) & (self.y+sq_length <= self.im_length):
+                px_in_sq = self.dat[self.x:self.im_length, self.y:self.y+sq_length]
+            elif (self.x+sq_length <= self.im_length) & (self.y+sq_length > self.im_length):
+                px_in_sq = self.dat[self.x:sq_length, self.y:self.y+self.im_length]
+            else:
+                px_in_sq = self.dat[self.x:self.x+self.im_length, self.y:self.y+self.im_length]
+            
+            self.sq_mean_value = round(np.mean(px_in_sq),3)
+            self.val.config(text=f'Pixel Value: {self.sq_mean_value}',font='Ariel 16')
+            self.canvas.draw()
+        
+        else:
+            print('Click inside of the image!')
+            self.val.config(text='Pixel Value: None', font='Ariel 16')
     
     # Function for opening the file explorer window
     def browseFiles(self):
@@ -286,11 +365,11 @@ class MainPage(tk.Frame):
         result = min_result + (value - min_value)/(max_value - min_value)*(max_result - min_result)
         return result
     
-    def midi_setup(self):
+    def midi_setup_bar(self):
         
         #define various quantities required for midi file generation
         self.y_scale = float(self.y_scale_entry.get())
-        self.strips_per_beat = 10
+        self.strips_per_beat = 15
         self.vel_min = int(self.vel_min_entry.get())
         self.vel_max = int(self.vel_max_entry.get())
         self.bpm = int(self.bpm_entry.get())
@@ -360,7 +439,39 @@ class MainPage(tk.Frame):
         self.memfile.seek(0)
         mixer.music.load(self.memfile)
         mixer.music.play()
+    
+    def midi_square(self,event):
 
+        sq_data = self.map_value(float(self.sq_mean_value),0,np.max(self.dat),0,1)
+        sq_data_scaled = sq_data**self.y_scale
+        
+        note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
+
+        #MAP DATA TO MIDI NOTE
+        #assigns midi note number to whichever sq_data_scaled is nearest
+        if sq_data<0:
+            note_index=0
+        else:
+            note_index = round(self.map_value(sq_data_scaled,0,1,0,len(note_midis)-1))
+        self.midi_data = note_midis[note_index]
+        
+        self.memfile = BytesIO()
+        
+        midi_file = MIDIFile(1)
+        midi_file.addTempo(track=0, time=0, tempo=self.bpm)
+        midi_file.addProgramChange(tracknum=0, channel=0, time=0, program=self.program)
+        
+        
+        midi_file.addNote(track=0, channel=0, pitch=int(note_midis[note_index]), time=0, duration=1, volume=90)
+        midi_file.writeFile(self.memfile)
+        #with open(homedir+'/Desktop/test.mid',"wb") as f:
+        #    self.midi_file.writeFile(f)
+        
+        mixer.init()
+        self.memfile.seek(0)   #for whatever reason, have to manually 'rewind' the track in order for mixer to play
+        mixer.music.load(self.memfile)
+        mixer.music.play()  
+        
     def midi_singlenote(self,event):
         #the setup for playing *just* one note...
         self.memfile = BytesIO()   #create working memory file (allows me to play the note without saving the file...yay!)
@@ -376,7 +487,7 @@ class MainPage(tk.Frame):
         midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data,cushion_right]))
         vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data,cushion_right]))
 
-        midi_file.addNote(track=0, channel=0, pitch=int(midi_edited[self.x]), time=self.t_data[1], duration=1, volume=int(vel_edited[self.x]))
+        midi_file.addNote(track=0, channel=0, pitch=int(midi_edited[self.x]), time=self.t_data[1], duration=1, volume=int(vel_edited[self.x]))   #isolate the one note corresponding to the click event, add to midi file
         
         midi_file.writeFile(self.memfile)
         #with open(homedir+'/Desktop/test.mid',"wb") as f:

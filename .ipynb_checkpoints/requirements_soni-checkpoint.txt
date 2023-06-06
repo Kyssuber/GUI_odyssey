@@ -1,0 +1,7 @@
+astropy==5.0.3
+audiolazy==0.6
+matplotlib==3.6.0
+MIDIUtil==1.2.1
+numpy==1.21.5
+pygame==2.3.0
+scipy==1.9.0

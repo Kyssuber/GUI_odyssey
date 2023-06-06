@@ -71,7 +71,7 @@ class MainPage(tk.Frame):
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
         
-        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n \n GENERAL INSTRUCTIONS: \n \n (1) Enter filepath into the top entry box click 'Browse' in order to search your local machine's good ol' inventory. Then click 'Enter'. \n \n (2) Clicking 'Sonify!' will create consecutive vertical strips of pixels, calculate the mean value of each band, and map the resulting array of means to a MIDI note which is ultimately translated into a piano key. [Presently, the only chord available is D-major.] The full sonification will play automatically upon clicking the button, using the default y scale (scales the mean pixel data, ydata**yscale), min and max velocities (the min and max volume, respectively, ranging from 0 to 127), the BPM (beats per minute -- higher BPM begets a speedier tune), and the min and max xrange. The user can edit these values to manipulate the sound, clicking 'Sonify!' once more to audibly harvest the outcome of their fiddling. \n \n (3) Left-clicking the figure to the left will allow the user to visualize an individual column of sonified pixels (red bar), as well as simultaneously hear the MIDI note corresponding to the mean pixel value of that column. The bottom-right widget of the GUI handily displays this mean value if the user is so inclined to know. \n \n (4) If the user wishes to view another galaxy, they may click 'Browse' to find a second FITS file and go wild. I certainly cannot thwart their efforts, for I am a simple text box."
+        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n \n GENERAL INSTRUCTIONS: \n \n (1) Enter filepath into the top entry box click 'Browse' in order to search your local machine's good ol' inventory. Then click 'Enter'. \n \n (2) Clicking 'Sonify!' will create consecutive vertical strips of pixels, calculate the mean value of each band, and map the resulting array of means to a MIDI note which is ultimately translated into a piano key. [Presently, the only chord available is D-major.] The full sonification will play automatically upon clicking the button, using the default y scale (scales the mean pixel data, ydata**yscale), min and max velocities (the min and max volume, respectively, ranging from 0 to 127), the BPM (beats per minute -- higher BPM begets a speedier tune), and the min and max xrange. The user can edit these values to manipulate the sound, clicking 'Sonify!' once more to audibly harvest the outcome of their fiddling. \n \n (3) Left-clicking the image will allow the user to visualize an individual column of sonified pixels (red bar), as well as simultaneously hear the MIDI note corresponding to the mean pixel value of that column. The bottom-right widget of the GUI handily displays this mean value if the user is so inclined to know. \n \n (4) If the user wishes to view another galaxy, they may click 'Browse' to find a second FITS file and go wild. I certainly cannot thwart their efforts, for I am a simple text box."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -80,7 +80,7 @@ class MainPage(tk.Frame):
         
         #create display frame, which will hold the canvas and a few button widgets underneath.
         self.frame_display=tk.LabelFrame(self,text='Display',font='Vendana 15',padx=5,pady=5)
-        self.frame_display.grid(row=0,column=0,rowspan=5)
+        self.frame_display.grid(row=0,column=0,rowspan=8)
         for i in range(self.rowspan):
             self.frame_display.columnconfigure(i, weight=1)
             self.frame_display.rowconfigure(i, weight=1)
@@ -94,7 +94,7 @@ class MainPage(tk.Frame):
             
         #create soni frame, which holds the event button for converting data into sound (midifile).
         self.frame_soni=tk.LabelFrame(self,padx=5,pady=5)
-        self.frame_soni.grid(row=3,column=1,sticky='se')
+        self.frame_soni.grid(row=6,column=1,sticky='se')
         for i in range(self.rowspan):
             self.frame_soni.columnconfigure(i, weight=1)
             self.frame_soni.rowconfigure(i, weight=1)
@@ -160,6 +160,16 @@ class MainPage(tk.Frame):
         self.xmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
         self.xmax_entry.insert(0,'ending xpx')
         self.xmax_entry.grid(row=5,column=1,columnspan=1)
+        
+        program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=6,column=0)
+        self.program_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.program_entry.insert(0,'0')
+        self.program_entry.grid(row=6,column=1,columnspan=1)
+        
+        duration_lab = tk.Label(self.frame_soni,text='Duration (sec)').grid(row=7,column=0)
+        self.duration_entry = tk.Entry(self.frame_soni, width=0, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.duration_entry.insert(0,'   1   ')
+        self.duration_entry.grid(row=7,column=1,columnspan=1)
 
     def add_info_button(self):
         self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15, pady=10, font='Ariel 20', command=self.popup)
@@ -175,7 +185,7 @@ class MainPage(tk.Frame):
     
     def add_midi_button(self):
         self.midi_button = tk.Button(self.frame_soni, text='Sonify!', padx=20, pady=10, font=self.helv20, command=self.midi_setup)
-        self.midi_button.grid(row=6,column=0,columnspan=2)
+        self.midi_button.grid(row=8,column=0,columnspan=2)
     
     def initiate_canvas(self):
         self.dat = fits.getdata(str(self.path_to_im.get()))
@@ -185,7 +195,6 @@ class MainPage(tk.Frame):
         full_filepath = str(self.path_to_im.get()).split('/')
         full_filename = full_filepath[-1]
         split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
-        print(split_filename)
         galaxyname = split_filename[0]
         galaxyband = split_filename[3]
         try:
@@ -285,6 +294,8 @@ class MainPage(tk.Frame):
         self.vel_min = int(self.vel_min_entry.get())
         self.vel_max = int(self.vel_max_entry.get())
         self.bpm = int(self.bpm_entry.get())
+        self.program = int(self.program_entry.get())
+        self.duration = float(self.duration_entry.get())
         try:
             self.xmin = int(self.xmin_entry.get())
             self.xmax = int(self.xmax_entry.get())
@@ -298,12 +309,11 @@ class MainPage(tk.Frame):
         
         self.note_names = 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5-D6'   #D-major
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
-        self.soundfont = '/opt/anaconda3/share/soundfonts/FluidR3_GM.sf2'
+        self.soundfont = '/opt/anaconda3/share/soundfonts/SM64SF_V2.sf2'
         
         band = self.dat[:,self.y_min:self.y_max]   #isolates pixels within horizontal band across the image from y_min to y_max
         strips = []   #create empty array for 1px strips
         mean_strip_values = np.zeros(self.xmax-self.xmin)
-        print(self.xmin,self.xmax)
         for i in range(self.xmin,self.xmax):
             strips.append(band[i,:])   #individual vertical strips
             mean_strip_values[i-self.xmin] = np.mean(strips[i-self.xmin])   #the 'ydata'; self.xmin-i for correct indices
@@ -340,10 +350,10 @@ class MainPage(tk.Frame):
         self.memfile = BytesIO()   #create working memory file (allows me to play the note without saving the file...yay!)
         midi_file = MIDIFile(1) #one track
         midi_file.addTempo(track=0,time=0,tempo=self.bpm) #only one track, so track=0th track; begin at time=0, tempo is bpm
-
+        midi_file.addProgramChange(tracknum=0, channel=0, time=0, program=self.program)
         #add midi notes to file
         for i in range(len(self.t_data)):
-            midi_file.addNote(track=0, channel=0, pitch=self.midi_data[i], time=self.t_data[i], duration=2, volume=self.vel_data[i])
+            midi_file.addNote(track=0, channel=0, pitch=self.midi_data[i], time=self.t_data[i], duration=self.duration, volume=self.vel_data[i])
         midi_file.writeFile(self.memfile)
         
         mixer.init()
@@ -358,6 +368,7 @@ class MainPage(tk.Frame):
         midi_file = MIDIFile(1) #one track
         midi_file.addTrackName(0,0,'Note')
         midi_file.addTempo(track=0, time=0, tempo=self.bpm)
+        midi_file.addProgramChange(tracknum=0, channel=0, time=0, program=self.program)
         
         #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes between arrays of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
         cushion_left = np.zeros(self.xmin)
@@ -365,7 +376,7 @@ class MainPage(tk.Frame):
         midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data,cushion_right]))
         vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data,cushion_right]))
 
-        midi_file.addNote(track=0, channel=0, pitch=int(midi_edited[self.x]), time=self.t_data[1], duration=2, volume=int(vel_edited[self.x]))
+        midi_file.addNote(track=0, channel=0, pitch=int(midi_edited[self.x]), time=self.t_data[1], duration=1, volume=int(vel_edited[self.x]))
         
         midi_file.writeFile(self.memfile)
         #with open(homedir+'/Desktop/test.mid',"wb") as f:
