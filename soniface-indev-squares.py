@@ -1,5 +1,6 @@
 '''
-Layout adopted from https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
+Class layout adapted from 
+https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
 import tkinter as tk
@@ -319,7 +320,7 @@ class MainPage(tk.Frame):
             self.canvas.draw()
             
         else:
-            print('Click inside of the image!')
+            print('Keep inside of the image!')
             self.val.config(text='Pixel Value: None', font='Ariel 16')
     
     def placeSq(self, event):
@@ -347,7 +348,7 @@ class MainPage(tk.Frame):
             self.canvas.draw()
         
         else:
-            print('Click inside of the image!')
+            print('Keep inside of the image!')
             self.val.config(text='Pixel Value: None', font='Ariel 16')
     
     # Function for opening the file explorer window
