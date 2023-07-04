@@ -50,10 +50,6 @@ def pointOne(event, canvas, data):
             
     else:
         line_one,line_two,line_three,line_four=create_rectangle(coords[0],x1,coords[1],y1)
-        if (event.inaxes==True) & (bound_check==True):
-            px_in_sq = self.dat[coords[0]:x1+coords[1], self.y:coords[1]+coords[1]+y1]
-            print(f'Mean pixel value: {np.mean(pix_in_sq)}')
-        
         canvas.draw()
         
         #reset parameters
