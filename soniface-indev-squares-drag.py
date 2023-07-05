@@ -395,8 +395,9 @@ class MainPage(tk.Frame):
             x_values=np.sort(np.array([x_one,x_two]))
             y_values=np.sort(np.array([y_one,y_two]))
 
-            self.sq_mean_value = self.dat[int(x_values[0]):int(x_values[1]), int(y_values[0]):int(y_values[1])]
-            print(f'Mean pixel value within rectangle: {np.round(np.mean(self.sq_mean_value),3)}')
+            px_in_sq = self.dat[int(x_values[0]):int(x_values[1]), int(y_values[0]):int(y_values[1])]
+            self.sq_mean_value = np.round(np.mean(px_in_sq),3)
+            print(f'Mean pixel value within rectangle: {self.sq_mean_value}')
         except TypeError:
             pass
     
@@ -549,8 +550,8 @@ class MainPage(tk.Frame):
     
     def midi_square(self,event):
 
-        print('sq_mean_value', self.sq_mean_value)
-        sq_data = self.map_value(float(self.sq_mean_value),0,np.max(self.dat),0,1)
+        sq_data = self.map_value(float(self.sq_mean_value),np.min(self.dat),np.max(self.dat),0,1)
+        print(f'Note: max pixel value is {np.max(self.dat)}, located at {np.where(self.dat==np.max(self.dat))}')
         sq_data_scaled = sq_data**self.y_scale
 
         note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
