@@ -113,7 +113,7 @@ class MainPage(tk.Frame):
             self.frame_value.rowconfigure(i, weight=1)
         
         #create box frame --> check boxes for lines vs. squares when interacting with the figure canvas
-        self.frame_box = tk.LabelFrame(self,padx=5,pady=5)
+        self.frame_box = tk.LabelFrame(self,text='Click Squares',padx=5,pady=5)
         self.frame_box.grid(row=6,column=1,sticky='s')
         for i in range(self.rowspan):
             self.frame_box.columnconfigure(i, weight=1)
@@ -144,7 +144,8 @@ class MainPage(tk.Frame):
         self.val.grid(row=0,column=0)
     
     def galaxy_to_display(self):
-        self.path_to_im = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', font='Arial 20')
+        self.path_to_im = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', 
+                                   font='Arial 20')
         self.path_to_im.insert(0,'enter path/to/image.fits')
         self.path_to_im.grid(row=0,column=0,columnspan=2)
         self.add_browse_button()
@@ -157,43 +158,51 @@ class MainPage(tk.Frame):
         #create all entry textboxes (with labels and initial values), midi button
         
         ylab = tk.Label(self.frame_soni,text='yscale').grid(row=0,column=0)
-        self.y_scale_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.y_scale_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                      font='Arial 15')
         self.y_scale_entry.insert(0,'0.5')
         self.y_scale_entry.grid(row=0,column=1,columnspan=1)
         
         vmin_lab = tk.Label(self.frame_soni,text='Min Velocity').grid(row=1,column=0)
-        self.vel_min_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.vel_min_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                      font='Arial 15')
         self.vel_min_entry.insert(0,'10')
         self.vel_min_entry.grid(row=1,column=1,columnspan=1)
         
         vmax_lab = tk.Label(self.frame_soni,text='Max Velocity').grid(row=2,column=0)
-        self.vel_max_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.vel_max_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                      font='Arial 15')
         self.vel_max_entry.insert(0,'100')
         self.vel_max_entry.grid(row=2,column=1,columnspan=1)
         
         bpm_lab = tk.Label(self.frame_soni,text='BPM').grid(row=3,column=0)
-        self.bpm_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.bpm_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                  font='Arial 15')
         self.bpm_entry.insert(0,'35')
         self.bpm_entry.grid(row=3,column=1,columnspan=1)
         
-        xmin_lab = tk.Label(self.frame_soni,text='xmin').grid(row=4,column=0)
-        self.xmin_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
-        self.xmin_entry.insert(0,'starting xpx')
-        self.xmin_entry.grid(row=4,column=1,columnspan=1)
+        xminmax_lab = tk.Label(self.frame_soni,text='xmin, xmax').grid(row=4,column=0)
+        self.xminmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green',
+                                      font='Arial 15')
+        self.xminmax_entry.insert(0,'x1, x2')
+        self.xminmax_entry.grid(row=4,column=1,columnspan=1)
         
-        xmax_lab = tk.Label(self.frame_soni,text='xmax').grid(row=5,column=0)
-        self.xmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
-        self.xmax_entry.insert(0,'ending xpx')
-        self.xmax_entry.grid(row=5,column=1,columnspan=1)
+        yminmax_lab = tk.Label(self.frame_soni,text='ymin, ymax').grid(row=5,column=0)
+        self.yminmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                      font='Arial 15')
+        self.yminmax_entry.insert(0,'y1, y2')
+        self.yminmax_entry.grid(row=5,column=1,columnspan=1)
         
         program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=6,column=0)
-        self.program_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
+        self.program_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                      font='Arial 15')
         self.program_entry.insert(0,'0')
         self.program_entry.grid(row=6,column=1,columnspan=1)
         
         duration_lab = tk.Label(self.frame_soni,text='Duration (sec)').grid(row=7,column=0)
-        self.duration_entry = tk.Entry(self.frame_soni, width=0, borderwidth=2, bg='black', fg='lime green', font='Arial 15')
-        self.duration_entry.insert(0,'   1   ')
+        self.duration_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
+                                       font='Arial 15')
+        self.duration_entry.insert(0,'1')
         self.duration_entry.grid(row=7,column=1,columnspan=1)
 
     def add_info_button(self):
@@ -412,7 +421,7 @@ class MainPage(tk.Frame):
             self.current_square.remove()
         except ValueError:
             #there is no current square to remove
-            print('All clear!')
+            pass
         
         #if the user has clicked the 'first' rectangle corner, then assign these coordinates to self.coords
         if self.coords is None:
@@ -435,7 +444,10 @@ class MainPage(tk.Frame):
                     self.create_rectangle(self.coords[0],x1,self.coords[1],y1)
                     self.canvas.draw()
 
-            #reset parameters
+            #assign all event coordinates to an array
+            self.event_bounds = [self.coords[0],self.coords[1],x1,y1]  #x1, y1, x2, y2
+                    
+            #reset parameters for next iteration
             self.coords = None  
             self.bound_check = None
             
@@ -483,16 +495,27 @@ class MainPage(tk.Frame):
         self.bpm = int(self.bpm_entry.get())
         self.program = int(self.program_entry.get())
         self.duration = float(self.duration_entry.get())
+        
+        #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image dimensions (for x parameters) and galaxy optical D25 (for y parameters)
         try:
-            self.xmin = int(self.xmin_entry.get())
-            self.xmax = int(self.xmax_entry.get())
+            self.xmin = int(self.event_bounds[2]) if (self.event_bounds[0]>self.event_bounds[2]) else int(self.event_bounds[0])
+            self.xmax = int(self.event_bounds[0]) if (self.event_bounds[0]>self.event_bounds[2]) else int(self.event_bounds[2])
         except:
+            print('Defaulting to image parameters for xmin, xmax; ymin, ymax.')
             self.xmin=0
             self.xmax=self.im_length
-            self.xmin_entry.delete(0,tk.END)
-            self.xmin_entry.insert(0,'0')
-            self.xmax_entry.delete(0,tk.END)
-            self.xmax_entry.insert(0,str(self.im_length))
+        
+        try:
+            self.ymin = int(self.event_bounds[3]) if (self.event_bounds[1]>self.event_bounds[3]) else int(self.event_bounds[1])
+            self.ymax = int(self.event_bounds[1]) if (self.event_bounds[1]>self.event_bounds[3]) else int(self.event_bounds[3])
+        except:
+            self.ymin = int(self.im_length/2-(0.20*self.im_length))
+            self.ymax = int(self.im_length/2+(0.20*self.im_length))
+        
+        self.xminmax_entry.delete(0,tk.END)
+        self.xminmax_entry.insert(0,f'{self.xmin}, {self.xmax}')
+        self.yminmax_entry.delete(0,tk.END)
+        self.yminmax_entry.insert(0,f'{self.ymin}, {self.ymax}')
         
         self.note_names = 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5-D6'   #D-major
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
@@ -612,3 +635,14 @@ if __name__ == "__main__":
     app = App()
     app.mainloop()
     app.destroy()
+    
+    
+    
+    
+    #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
+    #ROTATE THE SQUARE.
+    #change midi note scales (D major, etc.)
+    #do I want to keep the motion notify event..? 
+    #I should also update the "Click for Info" instructions to reflect the square funtionalities
+    #I should ALSO record a video tutorial on how to operate this doohickey.
+    #also also also...animations. maybe.
