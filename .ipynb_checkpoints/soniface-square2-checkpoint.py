@@ -66,9 +66,12 @@ class MainPage(tk.Frame):
     
     def __init__(self, parent, controller):
         
-        #these two variables will apply to the self.drawSq function, if the user desires to use it.
-        self.coords=None
+        #these variables will apply to the self.drawSq function, if the user desires to use it.
         self.bound_check=None
+        self.x1=None
+        self.x2=None
+        self.y1=None
+        self.y2=None
         
         #defines the number of rows/columns to resize when resizing the entire window.
         self.rowspan=10
@@ -99,7 +102,7 @@ class MainPage(tk.Frame):
             
         #create soni frame, which holds the event button for converting data into sound (midifile).
         #there are also heaps of text boxes with which the user can manipulate the sound conversion parameters
-        self.frame_soni=tk.LabelFrame(self,padx=5,pady=5)
+        self.frame_soni=tk.LabelFrame(self,text='Soni Parameters (Click sonify to activate sound)',padx=5,pady=5)
         self.frame_soni.grid(row=6,column=2,sticky='se')
         for i in range(self.rowspan):
             self.frame_soni.columnconfigure(i, weight=1)
@@ -112,6 +115,8 @@ class MainPage(tk.Frame):
             self.frame_value.columnconfigure(i, weight=1)
             self.frame_value.rowconfigure(i, weight=1)
         
+        
+        
         #create box frame --> check boxes for lines vs. squares when interacting with the figure canvas
         self.frame_box = tk.LabelFrame(self,text='Click Squares',padx=5,pady=5)
         self.frame_box.grid(row=6,column=1,sticky='s')
@@ -119,7 +124,6 @@ class MainPage(tk.Frame):
             self.frame_box.columnconfigure(i, weight=1)
             self.frame_box.rowconfigure(i, weight=1)
             tk.Label(self.frame_box,text='yscale').grid(row=0,column=0)
-        
         
         self.galaxy_to_display()
         '''
@@ -132,12 +136,15 @@ class MainPage(tk.Frame):
     
     def populate_box_widget(self):
         self.var = tk.IntVar()
-        c1 = tk.Radiobutton(self.frame_box, text='Motion Notify Event',variable=self.var, 
-                            value=1,command=self.change_canvas_event).grid(row=0,column=0)
         c2 = tk.Radiobutton(self.frame_box, text='Button Press Event',variable=self.var, 
-                            value=2, command=self.change_canvas_event).grid(row=1,column=0)
+                            value=2, command=self.change_canvas_event).grid(row=0,column=0)
         c3 = tk.Radiobutton(self.frame_box, text='Draw your own square', variable=self.var,
-                            value=3, command=self.change_canvas_event).grid(row=2,column=0)
+                            value=3, command=self.change_canvas_event).grid(row=1,column=0,columnspan=3)
+        self.angle_box = tk.Entry(self.frame_box, width=10, borderwidth=2, bg='black', fg='lime green',
+                                  font='Arial 20')
+        self.angle_box.insert(0,'angle (0-360)')
+        self.angle_box.grid(row=2,column=0,columnspan=3)
+        
     
     def initiate_vals(self):
         self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Ariel 20')
@@ -266,14 +273,7 @@ class MainPage(tk.Frame):
         self.current_square=plt.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
         self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)    
         
-        if int(self.var.get())==1:
-            self.connect_event=self.canvas.mpl_connect('motion_notify_event', self.placeSq)
-            try:
-                self.connect_event2=self.canvas.mpl_connect('motion_notify_event', self.midi_square)
-            except AttributeError:
-                print('Sonify first!')
-        
-        elif int(self.var.get())==2:
+        if int(self.var.get())==2:
             self.connect_event=self.canvas.mpl_connect('button_press_event',self.placeSq)
             try:
                 self.connect_event2=self.canvas.mpl_connect('button_press_event', self.midi_square)
@@ -300,14 +300,6 @@ class MainPage(tk.Frame):
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
     
     def change_canvas_event(self):
-        if int(self.var.get())==1:
-            self.canvas.mpl_disconnect(self.connect_event)
-            self.connect_event = self.canvas.mpl_connect('motion_notify_event', self.placeSq)
-            try:
-                self.canvas.mpl_disconnect(self.connect_event2)
-                self.connect_event2 = self.canvas.mpl_connect('motion_notify_event', self.midi_square)
-            except AttributeError:
-                print('Sonify first!')
         
         if int(self.var.get())==2:
             self.canvas.mpl_disconnect(self.connect_event)
@@ -326,8 +318,7 @@ class MainPage(tk.Frame):
                 self.connect_event2 = self.canvas.mpl_connect('button_press_event', self.midi_square)
             except AttributeError:
                 print('Sonify first!')          
-        
-    
+         
     #create command function to print info popup message
     def popup(self):
         messagebox.showinfo('Unconventional README.md',self.textbox)
@@ -355,6 +346,8 @@ class MainPage(tk.Frame):
         else:
             print('Keep inside of the image!')
             self.val.config(text='Pixel Value: None', font='Ariel 16')
+    
+    ###FOR BUTTON PRESS EVENT --> PLACE SINGLE SQUARE###
     
     def placeSq(self, event):
         self.x=int(event.xdata)
@@ -388,7 +381,145 @@ class MainPage(tk.Frame):
             print('Keep inside of the image!')
             self.val.config(text='Pixel Value: None', font='Ariel 16')
     
+    ###FOR RECTANGLES --> CLICK TWICE, DICTATE INCLINATION###
     
+    def func(self,x,m,b):
+        return m*x+b
+    
+    #from https://stackoverflow.com/questions/34372480/rotate-point-about-another-point-in-degrees-python
+    def rotate(self, point_to_be_rotated, angle, center_point = (0,0)):
+        angle = angle*np.pi/180
+        xnew = np.cos(angle)*(point_to_be_rotated[0] - center_point[0]) - np.sin(angle)*(point_to_be_rotated[1] - center_point[1]) + center_point[0]
+        ynew = np.sin(angle)*(point_to_be_rotated[0] - center_point[0]) + np.cos(angle)*(point_to_be_rotated[1] - center_point[1]) + center_point[1]
+
+        return (round(xnew,2),round(ynew,2))
+    
+    #extract x and y vertex coordinates, and the slope of the lines connecting these points
+    def get_xym(self):
+    
+        if self.angle%90 != 0:      #if angle is not divisible by 90, can rotate using this algorithm. 
+
+            (xc,yc) = ((p1[0]+p2[0])/2, (p1[1]+p2[1])/2)
+            one_rot = rotate(point_to_be_rotated = p1, angle = angle, center_point = (xc,yc))
+            two_rot = rotate(point_to_be_rotated = p2, angle = angle, center_point = (xc,yc))
+            three_rot = rotate(point_to_be_rotated = (p1[0],p2[1]), angle = angle, center_point = (xc,yc))
+            four_rot = rotate(point_to_be_rotated = (p2[0],p1[1]), angle = angle, center_point = (xc,yc))
+
+            x1 = np.linspace(one_rot[0],three_rot[0],50)
+            m1 = (one_rot[1] - three_rot[1])/(one_rot[0] - three_rot[0])
+            y1 = three_rot[1] + m1*(x1 - three_rot[0])
+
+            x2 = np.linspace(one_rot[0],four_rot[0],50)
+            m2 = (one_rot[1] - four_rot[1])/(one_rot[0] - four_rot[0])
+            y2 = four_rot[1] + m2*(x2 - four_rot[0])
+
+            x3 = np.linspace(two_rot[0],three_rot[0],50)
+            m3 = (two_rot[1] - three_rot[1])/(two_rot[0] - three_rot[0])
+            y3 = two_rot[1] + m3*(x3 - two_rot[0])
+
+            x4 = np.linspace(two_rot[0],four_rot[0],50)
+            m4 = (two_rot[1] - four_rot[1])/(two_rot[0] - four_rot[0])
+            y4 = two_rot[1] + m4*(x4 - two_rot[0])
+
+            self.x_rot = [x1,x2,x3,x4]
+            self.y_rot = [y1,y2,y3,y4]
+            self.m_rot = [m1,m2,m3,m4]
+
+        elif (angle/90)%2 == 0:  #if angle is divisible by 90 but is 0, 180, 360, ..., no change to rectangle
+            x1 = np.zeros(50)+p1[0]
+            y1 = np.linspace(p2[1],p1[1],50)
+
+            x2 = np.linspace(p1[0],p2[0],50)
+            y2 = np.zeros(50)+p2[1]
+
+            x3 = np.linspace(p2[0],p1[0],50)
+            y3 = np.zeros(50)+p1[1]
+
+            x4 = np.zeros(50)+p2[0]
+            y4 = np.linspace(p1[1],p2[1],50)
+
+            self.x_rot = [x1,x2,x3,x4]
+            self.y_rot = [y1,y2,y3,y4]
+            self.m_rot = [0,0,0,0]
+
+        else:                   #if angle is divisible by 90 but is 90, 270, ..., rectangle perpendicular
+                                #to the original
+            y1 = np.zeros(50)+p1[0]
+            x1 = np.linspace(p2[1],p1[1],50)
+
+            y2 = np.linspace(p1[0],p2[0],50)
+            x2 = np.zeros(50)+p2[1]
+
+            y3 = np.linspace(p2[0],p1[0],50)
+            x3 = np.zeros(50)+p1[1]
+
+            y4 = np.zeros(50)+p2[0]
+            x4 = np.linspace(p1[1],p2[1],50)
+
+            self.x_rot = [x1,x2,x3,x4]
+            self.y_rot = [y1,y2,y3,y4]
+            self.m_rot = [0,0,0,0]
+    
+    def l():#SEE LINE 647. I may just incorporate thingies.
+    
+        x_vals,y_vals,m_vals,angle = get_xym(p1=p1,p2=p2,angle=80)
+
+        plt.figure(figsize=(5,5))
+        plt.imshow(x,origin='lower',cmap='rainbow',alpha=0.2)
+
+        #for i in range(4):
+        #    plt.scatter(x_vals[i],y_vals[i])   #plot the perimeter of the rectangle
+
+        #initiate lists
+        list_to_mean = []
+        mean_list = []
+
+        for i in range(50):   #for the entire x extent, 
+                              #find x range of between blue and red elements, 
+                              #determine the equation variables to connect these elements
+                              #within this desired x range, then find this line's mean pixel value. 
+                              #proceed to next set of elements, etc.
+
+            #points from either x4,y4 (index=3) or x1,y1 (index=0)
+            if angle%90 != 0:
+                xpoints = np.linspace(x_vals[3][i],x_vals[0][-(i+1)],50)
+                b = y_vals[0][-(i+1)] - (m_vals[2]*x_vals[0][-(i+1)])
+                ypoints = func(xpoints,m_vals[2],b)
+                plt.scatter(xpoints,ypoints,s=1)
+
+                for n in range(len(ypoints)):
+                    list_to_mean.append(x[int(round(ypoints[n],3))][int(xpoints[n])])
+                    x[int(round(ypoints[n],3))][int(xpoints[n])]=False
+                mean_list.append(np.mean(list_to_mean))
+                list_to_mean = []
+
+            if (angle/90)%2 == 0:
+                xpoints = np.linspace(x_vals[3][i],x_vals[0][-(i+1)],50)
+                b = y_vals[0][-(i+1)] - (m_vals[2]*x_vals[0][-(i+1)])
+                ypoints = func(xpoints,m_vals[2],b)
+                plt.scatter(xpoints,ypoints,s=1)
+
+                for n in range(len(ypoints)):
+                    list_to_mean.append(x[int(round(ypoints[n],5))][int(xpoints[n])])
+                    x[int(round(ypoints[n],5))][int(xpoints[n])]=False
+                mean_list.append(np.mean(list_to_mean))
+                list_to_mean = []
+
+
+        if ((angle/90)%2 != 0) & (angle%90 == 0):
+            ypoints = np.linspace(y_vals[3][0],y_vals[0][-1],50)   #y_val start and end are the same at
+                                                                       #every index in this case
+            list_to_mean = []
+            mean_list = []
+
+            for i in range(np.abs(p1[1]-p2[1])):
+                xpoints = x_vals[1]+i        
+                plt.scatter(xpoints,ypoints,s=1)
+                for n in range(len(ypoints)):
+                    list_to_mean.append(x[int(round(ypoints[n]),3)][int(xpoints[n])])
+                    x[int(round(ypoints[n]),3)][int(xpoints[n])]=False
+                mean_list.append(np.mean(list_to_mean))
+                list_to_mean = []
     
     
     
@@ -399,7 +530,6 @@ class MainPage(tk.Frame):
         self.line_two = plt.plot([x_one,x_two],[y_one,y_one],color='crimson')
         self.line_three = plt.plot([x_two,x_two],[y_one,y_two],color='crimson')
         self.line_four = plt.plot([x_one,x_two],[y_two,y_two],color='crimson')
-
         try:
             x_values=np.sort(np.array([x_one,x_two]))
             y_values=np.sort(np.array([y_one,y_two]))
@@ -410,46 +540,62 @@ class MainPage(tk.Frame):
         except TypeError:
             pass
     
+    
+    
     def drawSq(self, event):
         
-        #collect the x and y coordinates of the click event
-        x1 = event.xdata
-        y1 = event.ydata
+        try:
+            self.angle = float(self.angle_box.get())
+        except:
+            self.angle = 0
+            print('Angle defaulting to 0. Please enter integer.')
         
-        #remove square aperture, if applicable. skip otherwise.
+        #collect the x and y coordinates of the click event
+        #if first click event already done, then just define x2, y2. otherwise, define x1, y1.
+        if (self.x1 is not None) & (self.y1 is not None):
+            self.x2 = event.xdata
+            self.y2 = event.ydata
+        else:
+            self.x1 = event.xdata
+            self.y1 = event.ydata
+            first_time=True
+        
+        #remove the small square aperture, if applicable (i.e., user drew then switched radio buttons). skip otherwise.
         try:
             self.current_square.remove()
         except ValueError:
             #there is no current square to remove
             pass
         
-        #if the user has clicked the 'first' rectangle corner, then assign these coordinates to self.coords
-        if self.coords is None:
-            self.coords = [x1,y1]
+        #the user has clicked only the 'first' rectangle corner...
+        if (self.x1 is not None) & (self.x2 is None):
             #if the corner is within the canvas, plot a dot to mark this 'first' corner
             if event.inaxes:
                 self.bound_check=True
-                dot = plt.scatter(x1,y1,color='crimson',s=10)
-                self.sq_mean_value = self.dat[int(x1),int(y1)]
+                dot = plt.scatter(self.x1,self.y1,color='crimson',s=10)
+                self.sq_mean_value = self.dat[int(self.x1),int(self.y1)]
                 self.canvas.draw()
                 #for whatever reason, placing dot.remove() here will delete the dot after the second click
                 dot.remove()
         
         #if the 'first' corner is already set, then plot the rectangle and print the output mean pixel value
         #within this rectangle
-        else:
+        if (self.x2 is not None):
             if event.inaxes:
                 if self.bound_check:
                     
-                    self.create_rectangle(self.coords[0],x1,self.coords[1],y1)
+                    self.create_rectangle(self.x1,self.x2,self.y1,self.y2)
                     self.canvas.draw()
 
             #assign all event coordinates to an array
-            self.event_bounds = [self.coords[0],self.coords[1],x1,y1]  #x1, y1, x2, y2
+            self.event_bounds = [self.x1,self.y1,self.x2,self.y2]
                     
             #reset parameters for next iteration
-            self.coords = None  
             self.bound_check = None
+            self.x1=None
+            self.x2=None
+            self.y1=None
+            self.y2=None
             
             #similar phenomenon as dot.remove() above.
             for line in [self.line_one,self.line_two,self.line_three,self.line_four]:
