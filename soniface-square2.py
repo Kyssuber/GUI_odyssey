@@ -3,6 +3,10 @@ Class layout adapted from
 https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
+from midiutil import MIDIFile
+from audiolazy import str2midi
+from pygame import mixer
+
 import tkinter as tk
 import numpy as np
 import os
@@ -18,9 +22,6 @@ from tkinter import filedialog
 import glob
 
 import sys
-from midiutil import MIDIFile
-from audiolazy import str2midi
-from pygame import mixer
 from io import BytesIO
 
 from scipy.stats import scoreatpercentile
