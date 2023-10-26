@@ -452,9 +452,9 @@ class MainPage(tk.Frame):
             self.bound_check = None
             
             #similar phenomenon as dot.remove() above.
-            for line in [self.line_one,self.line_two,self.line_three,self.line_four]:
-                line_to_remove = line.pop(0)
-                line_to_remove.remove()
+            #for line in [self.line_one,self.line_two,self.line_three,self.line_four]:
+            #    line_to_remove = line.pop(0)
+            #    line_to_remove.remove()
     
     
     
@@ -645,3 +645,4 @@ if __name__ == "__main__":
     #do I want to keep the motion notify event..? 
     #I should also update the "Click for Info" instructions to reflect the square funtionalities
     #I should ALSO record a video tutorial on how to operate this doohickey.
+    #also also also...animations. maybe.

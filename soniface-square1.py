@@ -452,9 +452,9 @@ class MainPage(tk.Frame):
             self.bound_check = None
             
             #similar phenomenon as dot.remove() above.
-            for line in [self.line_one,self.line_two,self.line_three,self.line_four]:
-                line_to_remove = line.pop(0)
-                line_to_remove.remove()
+            #for line in [self.line_one,self.line_two,self.line_three,self.line_four]:
+            #    line_to_remove = line.pop(0)
+            #    line_to_remove.remove()
     
     
     
