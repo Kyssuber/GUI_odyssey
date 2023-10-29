@@ -5,15 +5,21 @@ https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter
 
 from midiutil import MIDIFile
 from audiolazy import str2midi
-from pygame import mixer
+from pygame import mixer                    #this library is what causes the loading delay methinks
 
 import tkinter as tk
 import numpy as np
 import os
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib import pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
+
+#from matplotlib import pyplot as plt      #don't use, since closing GUI doesn't close pyplot!
+                                           #this does add a bit more clunkiness to the code, however.
+                                           #I did not create the rules. do not sue me.
+
+from matplotlib import figure              #see self.fig, self.ax.
+
+import matplotlib                          #I need this for matplotlib.use. sowwee.
+matplotlib.use('TkAgg')                    #strange error messages will appear otherwise.
 
 from scipy.stats import scoreatpercentile
 from astropy.visualization import simple_norm
@@ -218,10 +224,12 @@ class MainPage(tk.Frame):
     
     def init_display_size(self):
         #aim --> match display frame size with that once the canvas is added
-        plt.figure(figsize=(5,5))
-        self.im = plt.imshow(np.zeros(100).reshape(10,10))
-        plt.title('Blank Canvas',fontsize=15)
-        self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)    
+        #the idea is for consistent aestheticsTM
+        self.fig = figure.Figure(figsize=(5,5))
+        self.ax = self.fig.add_subplot()
+        self.im = self.ax.imshow(np.zeros(100).reshape(10,10))
+        self.ax.set_title('Blank Canvas',fontsize=15)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display) 
         
         #activate the draw square/rectangle/quadrilateral/four-sided polygon event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
@@ -273,20 +281,20 @@ class MainPage(tk.Frame):
     
     def increment(self):
         self.angle += 1
-        #edit textbox
-        return
+        self.angle_box.delete(0,tk.END)
+        self.angle_box.insert(0,str(self.angle))
     
     def decrement(self):
         self.angle -= 1
-        #edit textbox
-        return
+        self.angle_box.delete(0,tk.END)
+        self.angle_box.insert(0,str(self.angle))
     
     def initiate_canvas(self):
         
         #delete any and all miscellany (galaxy image, figure) from the canvas (created using 
         #self.init_display_size())
         self.label.delete('all')
-        plt.close()
+        self.ax.remove()
         
         self.dat = fits.getdata(str(self.path_to_im.get()))
         
@@ -314,31 +322,32 @@ class MainPage(tk.Frame):
         norm_im = simple_norm(self.dat*self.mask_bool,'asinh', min_percent=0.5, max_percent=99.9,
                               min_cut=v1, max_cut=v2)  #'beautify' the image
         
-        plt.figure(figsize=(5,5))
-        self.im = plt.imshow(self.dat,origin='lower',norm=norm_im)
-        plt.xlim(0,len(self.dat)-1)
-        plt.ylim(0,len(self.dat)-1)
+        #self.fig = figure.Figure(figsize=(5,5))
+        self.ax = self.fig.add_subplot()
+        self.im = self.ax.imshow(self.dat,origin='lower',norm=norm_im)
+        self.ax.set_xlim(0,len(self.dat)-1)
+        self.ax.set_ylim(0,len(self.dat)-1)
         
         #trying to extract a meaningful figure title from the path information
         filename=self.path_to_im.get().split('/')[-1]  #split str into list, let delimiter=/, isolate filename
         galaxy_name=filename.split('-')[0]  #galaxy name is first item in filename split list
         band=filename.split('-')[-1].split('.')[0]  #last item in filename list is band.fits; split into two components, isolate the first
         
-        plt.title(f'{galaxy_name} ({band})',fontsize=15)
+        self.ax.set_title(f'{galaxy_name} ({band})',fontsize=15)
 
         self.im_length = np.shape(self.dat)[0]
         self.y_min = int(self.im_length/2-(0.20*self.im_length))
         self.y_max = int(self.im_length/2+(0.20*self.im_length))
         self.x=self.im_length/2
         
-        self.current_square=plt.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
+        self.current_square=self.ax.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
         
-        self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)    
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display)    
         
         #activate the draw square/rectangle/quadrilateral event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
     
-        self.canvas = FigureCanvasTkAgg(plt.gcf(), master=self.frame_display)    
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display)    
         
         #activate the draw square/rectangle/quadrilateral/four-sided polygon event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
@@ -370,13 +379,13 @@ class MainPage(tk.Frame):
     
     def placeBar(self, event):  
         self.x=int(event.xdata)
-        #if user clicks (or hovers) outside the image bounds, then x is NoneType. y cannot be None, by design. only need to check x.
+        #if user clicks outside the image bounds, then x is NoneType. y cannot be None, by design. only need to check x.
         if event.inaxes:
             #re-plot bar
             line_x = np.zeros(150)+self.x
             line_y = np.linspace(self.y_min,self.y_max,150)       
             self.current_bar.remove()
-            self.current_bar = plt.scatter(line_x,line_y,s=3,color='red')
+            self.current_bar = self.ax.scatter(line_x,line_y,s=3,color='red')
             
             #extract the mean pixel value from this bar
             value_list = np.zeros(100)
@@ -529,7 +538,7 @@ class MainPage(tk.Frame):
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b = self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
-                #plt.scatter(xpoints,ypoints,s=1)
+                #self.ax.scatter(xpoints,ypoints,s=1)
 
                 for n in range(len(ypoints)):
                     list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
@@ -542,7 +551,7 @@ class MainPage(tk.Frame):
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b =self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
-                #plt.scatter(xpoints,ypoints,s=1)
+                #self.ax.scatter(xpoints,ypoints,s=1)
 
                 for n in range(len(ypoints)):
                     list_to_mean.append(self.dat[int(round(ypoints[n],5))][int(xpoints[n])])
@@ -558,9 +567,9 @@ class MainPage(tk.Frame):
             list_to_mean = []
             mean_list = []
 
-            for i in range(np.abs(self.p1[1]-self.p2[1])):
+            for i in range(np.abs(int(self.p1[1]-self.p2[1]))):
                 xpoints = self.x_rot[1]+i        
-                #plt.scatter(xpoints,ypoints,s=1)
+                #self.ax.scatter(xpoints,ypoints,s=1)
                 for n in range(len(ypoints)):
                     list_to_mean.append(self.dat[int(round(ypoints[n]),3)][int(xpoints[n])])
                     #self.dat[int(round(ypoints[n]),3)][int(xpoints[n])]=False
@@ -588,11 +597,12 @@ class MainPage(tk.Frame):
         if (self.angle==0)|(isinstance(self.angle,str)):
             if x_one is not None:    
                          
-                self.line_one = plt.plot([x_one,x_one],[y_one,y_two],color='crimson')
-                self.line_two = plt.plot([x_one,x_two],[y_one,y_one],color='crimson')
-                self.line_three = plt.plot([x_two,x_two],[y_one,y_two],color='crimson')
-                self.line_four = plt.plot([x_one,x_two],[y_two,y_two],color='crimson')
+                self.line_one = self.ax.plot([x_one,x_one],[y_one,y_two],color='crimson')
+                self.line_two = self.ax.plot([x_one,x_two],[y_one,y_one],color='crimson')
+                self.line_three = self.ax.plot([x_two,x_two],[y_one,y_two],color='crimson')
+                self.line_four = self.ax.plot([x_one,x_two],[y_two,y_two],color='crimson')
                 
+                #add if I would like to print the average pixel value
                 '''
                 try:
                     x_values=np.sort(np.array([x_one,x_two]))
@@ -612,10 +622,10 @@ class MainPage(tk.Frame):
                 x1,x2,x3,x4=self.one_rot[0],self.two_rot[0],self.three_rot[0],self.four_rot[0]
                 y1,y2,y3,y4=self.one_rot[1],self.two_rot[1],self.three_rot[1],self.four_rot[1]
 
-                self.line_eins = plt.plot([x1,x3],[y1,y3],color='crimson')   #1--3
-                self.line_zwei = plt.plot([x1,x4],[y1,y4],color='crimson')   #1--4
-                self.line_drei = plt.plot([x2,x3],[y2,y3],color='crimson')   #2--3
-                self.line_vier = plt.plot([x2,x4],[y2,y4],color='crimson')   #2--4
+                self.line_eins = self.ax.plot([x1,x3],[y1,y3],color='crimson')   #1--3
+                self.line_zwei = self.ax.plot([x1,x4],[y1,y4],color='crimson')   #1--4
+                self.line_drei = self.ax.plot([x2,x3],[y2,y3],color='crimson')   #2--3
+                self.line_vier = self.ax.plot([x2,x4],[y2,y4],color='crimson')   #2--4
 
                 self.canvas.draw()
 
@@ -630,10 +640,10 @@ class MainPage(tk.Frame):
             x1,x2,x3,x4=self.one_rot[0],self.two_rot[0],self.three_rot[0],self.four_rot[0]
             y1,y2,y3,y4=self.one_rot[1],self.two_rot[1],self.three_rot[1],self.four_rot[1]
                         
-            self.line_eins = plt.plot([x1,x3],[y1,y3],color='crimson')   #1--3
-            self.line_zwei = plt.plot([x1,x4],[y1,y4],color='crimson')   #1--4
-            self.line_drei = plt.plot([x2,x3],[y2,y3],color='crimson')   #2--3
-            self.line_vier = plt.plot([x2,x4],[y2,y4],color='crimson')   #2--4
+            self.line_eins = self.ax.plot([x1,x3],[y1,y3],color='crimson')   #1--3
+            self.line_zwei = self.ax.plot([x1,x4],[y1,y4],color='crimson')   #1--4
+            self.line_drei = self.ax.plot([x2,x3],[y2,y3],color='crimson')   #2--3
+            self.line_vier = self.ax.plot([x2,x4],[y2,y4],color='crimson')   #2--4
 
             self.canvas.draw()
             
@@ -669,7 +679,7 @@ class MainPage(tk.Frame):
             #if the corner is within the canvas, plot a dot to mark this 'first' corner
             if event.inaxes:
                 self.bound_check=True
-                dot = plt.scatter(self.x1,self.y1,color='crimson',s=10,marker='*')
+                dot = self.ax.scatter(self.x1,self.y1,color='crimson',s=10,marker='*')
                 self.sq_mean_value = self.dat[int(self.x1),int(self.y1)]
                 self.canvas.draw()
                 #for whatever reason, placing dot.remove() here will delete the dot after the second click
@@ -892,15 +902,11 @@ class MainPage(tk.Frame):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-    app.destroy()
-    
-    
+    app.destroy()    
     
     
     #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
-    #ROTATE THE SQUARE.
     #change midi note scales (D major, etc.)
-    #do I want to keep the motion notify event..? 
     #I should also update the "Click for Info" instructions to reflect the square funtionalities
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #also also also...animations. maybe.
