@@ -44,7 +44,7 @@ class App(tk.Tk):
     def __init__(self, *args, **kwargs):          #INITIALIZE; will always run when App class is called.
         tk.Tk.__init__(self, *args, **kwargs)     #initialize tkinter; args are parameter arguments, kwargs can be dictionary arguments
         
-        self.title('Sample Tkinter Structuring')
+        self.title('VirgoSoni: Sonification of Nearby Galaxies')
         self.geometry('1000x700')
         self.resizable(True,True)
         self.rowspan=10
@@ -423,10 +423,10 @@ class MainPage(tk.Frame):
         #self.event_bounds contains the list [self.x1,self.y1,self.x2,self.y2]
         self.p1 = [self.event_bounds[0],self.event_bounds[1]]   #coordinates of first click event
         self.p2 = [self.event_bounds[2],self.event_bounds[3]]   #coordinates of second click event
-
-        n_spaces = int(np.abs(self.p1[0] - self.p2[0]))
         
         if self.angle%90 != 0:      #if angle is not divisible by 90, can rotate using this algorithm. 
+            
+            n_spaces = int(np.abs(self.p1[0] - self.p2[0]))   #number of 'pixels' between x coordinates
             
             (xc,yc) = ((self.p1[0]+self.p2[0])/2, (self.p1[1]+self.p2[1])/2)
             one_rot = self.rotate(point_to_be_rotated = self.p1, center_point = (xc,yc))
@@ -462,6 +462,8 @@ class MainPage(tk.Frame):
 
         elif (self.angle/90)%2 == 0:  #if angle is divisible by 90 but is 0, 180, 360, ..., no change to rectangle
             
+            n_spaces = int(np.abs(self.p1[0] - self.p2[0]))   #number of 'pixels' between x coordinates
+            
             x1 = np.zeros(50)+self.p1[0]
             y1 = np.linspace(self.p2[1],self.p1[1],n_spaces)
 
@@ -487,6 +489,8 @@ class MainPage(tk.Frame):
 
         else:                   #if angle is divisible by 90 but is 90, 270, ..., rectangle perpendicular
                                 #to the original
+            
+            n_spaces = int(np.abs(self.p1[1] - self.p2[1]))   #rectangle 'length' now the y values
             
             (xc,yc) = ((self.p1[0]+self.p2[0])/2, (self.p1[1]+self.p2[1])/2)
             one_rot = self.rotate(point_to_be_rotated = self.p1, center_point = (xc,yc))
@@ -534,6 +538,7 @@ class MainPage(tk.Frame):
                                         #proceed to next set of elements, etc.
 
             #points from either x4,y4 (index=3) or x1,y1 (index=0)
+            #any angle which is NOT 0,90,180,270,360,etc.
             if self.angle%90 != 0:
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b = self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
@@ -546,7 +551,8 @@ class MainPage(tk.Frame):
                 self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
-
+            
+            #0,180,360,etc.
             if (self.angle/90)%2 == 0:
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b =self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
@@ -560,8 +566,10 @@ class MainPage(tk.Frame):
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
 
-
+        #90,270,etc.
+        #troubles abound here, though I am unsure why. must fix.
         if ((self.angle/90)%2 != 0) & (self.angle%90 == 0):
+            #
             #y_val start and end are the same at every index for this case
             ypoints = np.linspace(self.y_rot[3][0],self.y_rot[0][-1],self.n_spaces)    
             list_to_mean = []
@@ -570,8 +578,10 @@ class MainPage(tk.Frame):
             for i in range(np.abs(int(self.p1[1]-self.p2[1]))):
                 xpoints = self.x_rot[1]+i        
                 #self.ax.scatter(xpoints,ypoints,s=1)
+                print(len(xpoints),len(ypoints))
+                
                 for n in range(len(ypoints)):
-                    list_to_mean.append(self.dat[int(round(ypoints[n]),3)][int(xpoints[n])])
+                    list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
                     #self.dat[int(round(ypoints[n]),3)][int(xpoints[n])]=False
                 self.all_bars[i][0:self.n_times] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))

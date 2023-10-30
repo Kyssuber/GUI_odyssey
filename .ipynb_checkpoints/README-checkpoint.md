@@ -15,4 +15,4 @@ Alternatively,
 > 
 > %run _____/display_fits_OOP.py
 
-ULTIMATE AIM: create a user-interface for the sonification project (see the 'research' repository). sonifinterface.py is currently in development and will ideally satisfy this aim.
+ULTIMATE AIM: create a user-interface for the sonification project (see the 'research' repository). soniface-squares2.py is currently in development and will ideally satisfy this aim.
