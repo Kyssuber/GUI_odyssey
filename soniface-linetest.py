@@ -146,10 +146,6 @@ class MainPage(tk.Frame):
     
     def populate_box_widget(self):
         self.var = tk.IntVar()
-        #c2 = tk.Radiobutton(self.frame_box, text='Button Press Event',variable=self.var, 
-        #                    value=2, command=self.change_canvas_event).grid(row=0,column=0)
-        #c3 = tk.Radiobutton(self.frame_box, text='Draw your own square', variable=self.var,
-        #                    value=3, command=self.change_canvas_event).grid(row=0,column=0,columnspan=3)
         self.angle_box = tk.Entry(self.frame_box, width=15, borderwidth=2, bg='black', fg='lime green',
                                   font='Arial 20')
         self.angle_box.insert(0,'angle (0-360)')
@@ -157,8 +153,12 @@ class MainPage(tk.Frame):
         self.add_angle_buttons()
     
     def initiate_vals(self):
-        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Ariel 20')
-        self.val.grid(row=0,column=0)
+        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Arial 20')
+        self.val.grid(row=1,column=0)
+        self.line_check = tk.Checkbutton(self.frame_value,text='Switch to Lines',
+                                         onvalue=1,offvalue=0,command=self.change_canvas_event,
+                                         variable=self.var,font='Arial 20')
+        self.line_check.grid(row=0,column=0)
     
     def galaxy_to_display(self):
         self.path_to_im = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', 
@@ -233,12 +233,6 @@ class MainPage(tk.Frame):
         
         #activate the draw square/rectangle/quadrilateral/four-sided polygon event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-        
-        #re-add if I decide to utilize the squares again
-        #try:
-        #    self.connect_event2=self.canvas.mpl_connect('button_press_event', self.midi_square)
-        #except AttributeError:
-        #    print('Sonify first!') 
         
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
@@ -340,23 +334,10 @@ class MainPage(tk.Frame):
         self.y_max = int(self.im_length/2+(0.20*self.im_length))
         self.x=self.im_length/2
         
-        self.current_square=self.ax.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
-        
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display)    
-        
-        #activate the draw square/rectangle/quadrilateral event
-        self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-    
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display)    
         
         #activate the draw square/rectangle/quadrilateral/four-sided polygon event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-        
-        #re-add if I decide to utilize the squares again
-        #try:
-        #    self.connect_event2=self.canvas.mpl_connect('button_press_event', self.midi_square)
-        #except AttributeError:
-        #    print('Sonify first!') 
         
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
@@ -365,13 +346,12 @@ class MainPage(tk.Frame):
         
     def change_canvas_event(self):
         
-        self.canvas.mpl_disconnect(self.connect_event)
-        self.connect_event = self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-        try:
-            self.canvas.mpl_disconnect(self.connect_event2)
-            self.connect_event2 = self.canvas.mpl_connect('button_press_event', self.midi_square)
-        except AttributeError:
-            print('Sonify first!')          
+        if self.var==0:
+            self.canvas.mpl_disconnect(self.connect_event)
+            self.connect_event = self.canvas.mpl_connect('button_press_event',self.drawSqRec)
+        if self.var==1:
+            self.canvas.mpl_disconnect(self.connect_event)
+            self.connect_event = self.canvas.mpl_connect('button_press_event',self.placeBar)
          
     #create command function to print info popup message
     def popup(self):
@@ -394,6 +374,7 @@ class MainPage(tk.Frame):
                 px_value = self.dat[int(y_coord)][self.x]   #x will be the same...again, by design.
                 value_list[index] = px_value
             mean_px = round(np.mean(value_list),3)
+            
             self.val.config(text=f'Pixel Value: {mean_px}',font='Ariel 16')
             self.canvas.draw()
             
@@ -612,19 +593,6 @@ class MainPage(tk.Frame):
                 self.line_three = self.ax.plot([x_two,x_two],[y_one,y_two],color='crimson')
                 self.line_four = self.ax.plot([x_one,x_two],[y_two,y_two],color='crimson')
                 
-                #add if I would like to print the average pixel value
-                '''
-                try:
-                    x_values=np.sort(np.array([x_one,x_two]))
-                    y_values=np.sort(np.array([y_one,y_two]))
-
-                    px_in_sq = self.dat[int(x_values[0]):int(x_values[1]), int(y_values[0]):int(y_values[1])]
-                    self.sq_mean_value = np.round(np.mean(px_in_sq),3)
-                    print(f'Mean pixel value within rectangle: {self.sq_mean_value}')
-                except TypeError:
-                    pass
-                '''
-                
             else:
             
                 self.get_xym()   #defines and initiates self.x_rot, self.y_rot, self.m_rot
@@ -674,15 +642,6 @@ class MainPage(tk.Frame):
             self.x1 = event.xdata
             self.y1 = event.ydata
             first_time=True
-        
-        '''
-        #remove the small square aperture, if applicable (i.e., user drew then switched radio buttons). skip otherwise.
-        try:
-            self.current_square.remove()
-        except ValueError:
-            #there is no current square to remove
-            pass
-        '''
         
         #the user has clicked only the 'first' rectangle corner...
         if (self.x1 is not None) & (self.x2 is None):
