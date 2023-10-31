@@ -508,8 +508,10 @@ class MainPage(tk.Frame):
         #create lists
         list_to_mean = []
         self.mean_list = []   #only need to initialize once
-        self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
         
+        #note --> self.all_bars contains all pixel values underneath the superimposed bars!
+        #         that is...at each y-coordinate, what is the mean pixel value of the column?
+        #         (or whatever the rotated variant of a column is.)
         
         for i in range(self.n_spaces):  #for the entire n_spaces extent: 
                                         #find x range of between same-index points on opposing sides of the 
@@ -521,28 +523,34 @@ class MainPage(tk.Frame):
             #points from either x4,y4 (index=3) or x1,y1 (index=0)
             #any angle which is NOT 0,90,180,270,360,etc.
             if self.angle%90 != 0:
+                self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b = self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
                 #self.ax.scatter(xpoints,ypoints,s=1)
 
                 for n in range(len(ypoints)):
+                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
+                    #the column ypoints[n]
                     list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
-                    #self.dat[int(round(ypoints[n],3))][int(xpoints[n])]=False
+
                 self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
             
             #0,180,360,etc.
             if (self.angle/90)%2 == 0:
+                self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b =self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
                 #self.ax.scatter(xpoints,ypoints,s=1)
 
                 for n in range(len(ypoints)):
+                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
+                    #the column ypoints[n]
                     list_to_mean.append(self.dat[int(round(ypoints[n],5))][int(xpoints[n])])
-                    #self.dat[int(round(ypoints[n],5))][int(xpoints[n])]=False
+
                 self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
@@ -550,24 +558,25 @@ class MainPage(tk.Frame):
         #90,270,etc.
         #troubles abound here, though I am unsure why. must fix.
         if ((self.angle/90)%2 != 0) & (self.angle%90 == 0):
-            #
             #y_val start and end are the same at every index for this case
             ypoints = np.linspace(self.y_rot[3][0],self.y_rot[0][-1],self.n_spaces)    
             list_to_mean = []
             mean_list = []
+            all_bars = np.zeros((np.abs(self.p1[1]-self.p2[1]),self.n_spaces))
+            
 
             for i in range(np.abs(int(self.p1[1]-self.p2[1]))):
                 xpoints = self.x_rot[1]+i        
                 #self.ax.scatter(xpoints,ypoints,s=1)
-                print(len(xpoints),len(ypoints))
-                
+
                 for n in range(len(ypoints)):
+                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
+                    #the column ypoints[n]
                     list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
-                    #self.dat[int(round(ypoints[n]),3)][int(xpoints[n])]=False
-                self.all_bars[i][0:self.n_times] = np.asarray(list_to_mean)
+
+                self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
-  
 
     def create_rectangle(self,x_one=None,x_two=None,y_one=None,y_two=None):
         
@@ -592,19 +601,6 @@ class MainPage(tk.Frame):
                 self.line_two = self.ax.plot([x_one,x_two],[y_one,y_one],color='crimson')
                 self.line_three = self.ax.plot([x_two,x_two],[y_one,y_two],color='crimson')
                 self.line_four = self.ax.plot([x_one,x_two],[y_two,y_two],color='crimson')
-                
-                #add if I would like to print the average pixel value
-                '''
-                try:
-                    x_values=np.sort(np.array([x_one,x_two]))
-                    y_values=np.sort(np.array([y_one,y_two]))
-
-                    px_in_sq = self.dat[int(x_values[0]):int(x_values[1]), int(y_values[0]):int(y_values[1])]
-                    self.sq_mean_value = np.round(np.mean(px_in_sq),3)
-                    print(f'Mean pixel value within rectangle: {self.sq_mean_value}')
-                except TypeError:
-                    pass
-                '''
                 
             else:
             
