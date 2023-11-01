@@ -145,7 +145,6 @@ class MainPage(tk.Frame):
         self.init_display_size()
     
     def populate_box_widget(self):
-        self.var = tk.IntVar()
         self.angle_box = tk.Entry(self.frame_box, width=15, borderwidth=2, bg='black', fg='lime green',
                                   font='Arial 20')
         self.angle_box.insert(0,'angle (0-360)')
@@ -153,11 +152,12 @@ class MainPage(tk.Frame):
         self.add_angle_buttons()
     
     def initiate_vals(self):
-        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Arial 20')
+        self.var = tk.IntVar()
+        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Arial 18')
         self.val.grid(row=1,column=0)
         self.line_check = tk.Checkbutton(self.frame_value,text='Switch to Lines',
                                          onvalue=1,offvalue=0,command=self.change_canvas_event,
-                                         variable=self.var,font='Arial 20')
+                                         variable=self.var,font='Arial 15')
         self.line_check.grid(row=0,column=0)
     
     def galaxy_to_display(self):
@@ -358,12 +358,21 @@ class MainPage(tk.Frame):
         messagebox.showinfo('Unconventional README.md',self.textbox)
     
     def placeBar(self, event):  
-        self.x=int(event.xdata)
-        #if user clicks outside the image bounds, then x is NoneType. y cannot be None, by design. only need to check x.
+        self.x=round(event.xdata,2)
+        self.y=round(event.ydata,2)
+        #if user clicks outside the image bounds, then problem-o.
         if event.inaxes:
+            #find in which line the coordinates lie. np.where() outputs three arrays here...
+            #first 'array' consists of the line list which contains the coordinate
+            #second 'array' directs to the row in that line which contains the coordinate
+            #third 'array' contains, of course, the x and y coordinate components, respectively
+            #we want the first array.
+            line_index = np.where(np.asarray(self.all_line_coords)==(self.x,self.y))[0][0]
+            
+            
+                
+                
             #re-plot bar
-            line_x = np.zeros(150)+self.x
-            line_y = np.linspace(self.y_min,self.y_max,150)       
             self.current_bar.remove()
             self.current_bar = self.ax.scatter(line_x,line_y,s=3,color='red')
             
@@ -379,7 +388,7 @@ class MainPage(tk.Frame):
             self.canvas.draw()
             
         else:
-            print('Keep inside of the image!')
+            print('Keep inside of the bounds of either the rectangle or the image!')
             self.val.config(text='Pixel Value: None', font='Ariel 16')
     
     
@@ -508,10 +517,8 @@ class MainPage(tk.Frame):
         #create lists
         list_to_mean = []
         self.mean_list = []   #only need to initialize once
-        
-        #note --> self.all_bars contains all pixel values underneath the superimposed bars!
-        #         that is...at each y-coordinate, what is the mean pixel value of the column?
-        #         (or whatever the rotated variant of a column is.)
+        self.all_line_coords = []   #also only need to initialize once --> will give x,y coordinates for every line
+                                    #(hence the variable name).
         
         for i in range(self.n_spaces):  #for the entire n_spaces extent: 
                                         #find x range of between same-index points on opposing sides of the 
@@ -527,56 +534,77 @@ class MainPage(tk.Frame):
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b = self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
-                #self.ax.scatter(xpoints,ypoints,s=1)
-
+                
+                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
+                all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),2)),
+                                                np.ndarray.tolist(np.round(np.asarray(ypoints),2)))))
+                
                 for n in range(len(ypoints)):
                     #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
                     #the column ypoints[n]
                     list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
 
-                self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
             
             #0,180,360,etc.
             if (self.angle/90)%2 == 0:
-                self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b =self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
-                #self.ax.scatter(xpoints,ypoints,s=1)
-
+                
+                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
+                all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),2)),
+                                                np.ndarray.tolist(np.round(np.asarray(ypoints),2)))))
+                
                 for n in range(len(ypoints)):
                     #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
                     #the column ypoints[n]
                     list_to_mean.append(self.dat[int(round(ypoints[n],5))][int(xpoints[n])])
 
-                self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
-
+            
+            
         #90,270,etc.
-        #troubles abound here, though I am unsure why. must fix.
         if ((self.angle/90)%2 != 0) & (self.angle%90 == 0):
             #y_val start and end are the same at every index for this case
             ypoints = np.linspace(self.y_rot[3][0],self.y_rot[0][-1],self.n_spaces)    
             list_to_mean = []
             mean_list = []
-            all_bars = np.zeros((np.abs(self.p1[1]-self.p2[1]),self.n_spaces))
             
 
             for i in range(np.abs(int(self.p1[1]-self.p2[1]))):
                 xpoints = self.x_rot[1]+i        
-                #self.ax.scatter(xpoints,ypoints,s=1)
+                
+                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
+                all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),2)),
+                                                np.ndarray.tolist(np.round(np.asarray(ypoints),2)))))
 
                 for n in range(len(ypoints)):
                     #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
                     #the column ypoints[n]
-                    list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
+                    list_to_mean.append(self.dat[int(ypoints[n])][int(xpoints[n])])
 
-                self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
+        
+        #check if all_line_coords arranged from left to right
+        #if not, sort it (flip last list to first, etc.) and reverse mean_list accordingly
+        #first define coordinates of first and second "starting coordinates"
+        first_coor = self.all_coords_list[0][0]
+        second_coor = self.all_coords_list[1][0]
+        
+        #isolate the x values
+        first_x = first_coor[0]
+        second_x = second_coor[0]
+        
+        #if the first x coordinate is greater than the second, then all set. 
+        #otherwise, lists arranged from right to left. fix.
+        #must also flip mean_list so that the values remain matched with the correct lines
+        if first_x>second_x:
+            self.all_line_coords = self.all_line_coords.sort()
+            self.mean_list = self.mean_list.reverse()
 
     def create_rectangle(self,x_one=None,x_two=None,y_one=None,y_two=None):
         
