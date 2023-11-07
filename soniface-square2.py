@@ -22,6 +22,7 @@ import matplotlib                          #I need this for matplotlib.use. soww
 matplotlib.use('TkAgg')                    #strange error messages will appear otherwise.
 
 from scipy.stats import scoreatpercentile
+from scipy import spatial
 from astropy.visualization import simple_norm
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -33,9 +34,6 @@ import glob
 import sys
 from io import BytesIO
 
-from scipy.stats import scoreatpercentile
-from astropy.visualization import simple_norm
-
 homedir = os.getenv('HOME')
 
 #create main window container, into which the first page will be placed.
@@ -44,7 +42,7 @@ class App(tk.Tk):
     def __init__(self, *args, **kwargs):          #INITIALIZE; will always run when App class is called.
         tk.Tk.__init__(self, *args, **kwargs)     #initialize tkinter; args are parameter arguments, kwargs can be dictionary arguments
         
-        self.title('VirgoSoni: Sonification of Nearby Galaxies')
+        self.title('MIDI-chlorians: Sonification of Nearby Galaxies')
         self.geometry('1000x700')
         self.resizable(True,True)
         self.rowspan=10
@@ -90,7 +88,7 @@ class MainPage(tk.Frame):
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
         
-        self.textbox="GOAL: Generate and interact with a 2D sonified galaxy cutout. \n \n GENERAL INSTRUCTIONS: \n \n (1) Enter filepath into the top entry box click 'Browse' in order to search your local machine's good ol' inventory. Then click 'Enter'. \n \n (2) Clicking 'Sonify' will create consecutive vertical strips of pixels, calculate the mean value of each band, and map the resulting array of means to a MIDI note which is ultimately translated into a piano key. [Presently, the only chord available is D-major.] The full sonification will play automatically upon clicking the button, using the default y scale (scales the mean pixel data, ydata**yscale), min and max velocities (the min and max volume, respectively, ranging from 0 to 127), the BPM (beats per minute -- higher BPM begets a speedier tune), and the min and max xrange. The user can edit these values to manipulate the sound, clicking 'Sonify' once more to audibly harvest the outcome of their fiddling. \n \n (3) Left-clicking the image will allow the user to visualize an individual column of sonified pixels (red bar), as well as simultaneously hear the MIDI note corresponding to the mean pixel value of that column. The bottom-right widget of the GUI handily displays this mean value if the user is so inclined to know. \n \n (4) If the user wishes to view another galaxy, they may click 'Browse' to find a second FITS file and go wild. I certainly cannot thwart their efforts, for I am a simple text box."
+        self.textbox="In progress."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -145,11 +143,6 @@ class MainPage(tk.Frame):
         self.init_display_size()
     
     def populate_box_widget(self):
-        self.var = tk.IntVar()
-        #c2 = tk.Radiobutton(self.frame_box, text='Button Press Event',variable=self.var, 
-        #                    value=2, command=self.change_canvas_event).grid(row=0,column=0)
-        #c3 = tk.Radiobutton(self.frame_box, text='Draw your own square', variable=self.var,
-        #                    value=3, command=self.change_canvas_event).grid(row=0,column=0,columnspan=3)
         self.angle_box = tk.Entry(self.frame_box, width=15, borderwidth=2, bg='black', fg='lime green',
                                   font='Arial 20')
         self.angle_box.insert(0,'angle (0-360)')
@@ -157,8 +150,13 @@ class MainPage(tk.Frame):
         self.add_angle_buttons()
     
     def initiate_vals(self):
-        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Ariel 20')
-        self.val.grid(row=0,column=0)
+        self.var = tk.IntVar()
+        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Arial 18')
+        self.val.grid(row=1,column=0)
+        self.line_check = tk.Checkbutton(self.frame_value,text='Switch to Lines',
+                                         onvalue=1,offvalue=0,command=self.change_canvas_event,
+                                         variable=self.var,font='Arial 15')
+        self.line_check.grid(row=0,column=0)
     
     def galaxy_to_display(self):
         self.path_to_im = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', 
@@ -228,17 +226,12 @@ class MainPage(tk.Frame):
         self.fig = figure.Figure(figsize=(5,5))
         self.ax = self.fig.add_subplot()
         self.im = self.ax.imshow(np.zeros(100).reshape(10,10))
-        self.ax.set_title('Blank Canvas',fontsize=15)
+        self.ax.set_title('Click "Browse" to the right to begin!',fontsize=15)
+        self.text = self.ax.text(x=1.8,y=4.8,s='Your Galaxy \n Goes Here',color='red',fontsize=25)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display) 
         
         #activate the draw square/rectangle/quadrilateral/four-sided polygon event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-        
-        #re-add if I decide to utilize the squares again
-        #try:
-        #    self.connect_event2=self.canvas.mpl_connect('button_press_event', self.midi_square)
-        #except AttributeError:
-        #    print('Sonify first!') 
         
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
@@ -291,7 +284,7 @@ class MainPage(tk.Frame):
     
     def initiate_canvas(self):
         
-        #delete any and all miscellany (galaxy image, figure) from the canvas (created using 
+        #delete any and all miscellany (galaxy image, squares, lines) from the canvas (created using 
         #self.init_display_size())
         self.label.delete('all')
         self.ax.remove()
@@ -336,70 +329,105 @@ class MainPage(tk.Frame):
         self.ax.set_title(f'{galaxy_name} ({band})',fontsize=15)
 
         self.im_length = np.shape(self.dat)[0]
-        self.y_min = int(self.im_length/2-(0.20*self.im_length))
-        self.y_max = int(self.im_length/2+(0.20*self.im_length))
+        self.ymin = int(self.im_length/2-(0.20*self.im_length))
+        self.ymax = int(self.im_length/2+(0.20*self.im_length))
         self.x=self.im_length/2
         
-        self.current_square=self.ax.scatter(np.zeros(100)+self.x, np.linspace(self.y_min,self.y_max,100), s=3, color='None')
+        #initiate self.current_bar (just an invisible line...for now)
+        self.current_bar, = self.ax.plot([self.im_length/2,self.im_length/2+1],
+                                         [self.im_length/2,self.im_length/2+1],
+                                         color='None')
         
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display)    
-        
-        #activate the draw square/rectangle/quadrilateral event
-        self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-    
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_display)    
         
         #activate the draw square/rectangle/quadrilateral/four-sided polygon event
         self.connect_event=self.canvas.mpl_connect('button_press_event',self.drawSqRec)
         
-        #re-add if I decide to utilize the squares again
-        #try:
-        #    self.connect_event2=self.canvas.mpl_connect('button_press_event', self.midi_square)
-        #except AttributeError:
-        #    print('Sonify first!') 
-        
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
-        
-        
+            
     def change_canvas_event(self):
         
-        self.canvas.mpl_disconnect(self.connect_event)
-        self.connect_event = self.canvas.mpl_connect('button_press_event',self.drawSqRec)
-        try:
-            self.canvas.mpl_disconnect(self.connect_event2)
-            self.connect_event2 = self.canvas.mpl_connect('button_press_event', self.midi_square)
-        except AttributeError:
-            print('Sonify first!')          
+        if int(self.var.get())==0:
+            self.canvas.mpl_disconnect(self.connect_event)
+            self.connect_event = self.canvas.mpl_connect('button_press_event',self.drawSqRec)
+        if int(self.var.get())==1:
+            self.canvas.mpl_disconnect(self.connect_event)
+            self.connect_event = self.canvas.mpl_connect('button_press_event',self.placeBar)
          
     #create command function to print info popup message
     def popup(self):
         messagebox.showinfo('Unconventional README.md',self.textbox)
     
+    #it may not be the most efficient function, as it calculates the distances between every line coordinate and the given (x,y); however, I am not clever enough to conjure up an alternative solution presently.
+    def find_closest_bar(self):
+        
+        #initiate distances list --> for a given (x,y), which point in every line in self.all_line_coords
+        #is closest to (x,y)? this distance will be placed in the distances list.
+        self.distances=[]
+        
+        coord=(self.x,self.y)
+        
+        for line in self.all_line_coords:
+            tree = spatial.KDTree(line)
+            result=tree.query([coord])
+            self.distances.append(result[0])
+        
+        self.closest_line_index = np.where(self.distances==np.min(self.distances))[0][0]
+
     def placeBar(self, event):  
-        self.x=int(event.xdata)
-        #if user clicks outside the image bounds, then x is NoneType. y cannot be None, by design. only need to check x.
-        if event.inaxes:
-            #re-plot bar
-            line_x = np.zeros(150)+self.x
-            line_y = np.linspace(self.y_min,self.y_max,150)       
+        
+        
+        self.x=event.xdata
+        self.y=event.ydata
+        
+        #remove current bar, if applicable
+        try:
             self.current_bar.remove()
-            self.current_bar = self.ax.scatter(line_x,line_y,s=3,color='red')
+        except:
+            pass
+        
+        #if user clicks outside the image bounds, then problem-o.
+        if event.inaxes:
             
-            #extract the mean pixel value from this bar
-            value_list = np.zeros(100)
-            for index in range(100):
-                y_coord = line_y[index]
-                px_value = self.dat[int(y_coord)][self.x]   #x will be the same...again, by design.
-                value_list[index] = px_value
-            mean_px = round(np.mean(value_list),3)
-            self.val.config(text=f'Pixel Value: {mean_px}',font='Ariel 16')
-            self.canvas.draw()
+            if self.angle==0:
+                line_x = np.zeros(150)+int(self.x)
+                line_y = np.linspace(self.ymin,self.ymax,150)       
+                self.current_bar, = self.ax.plot(line_x,line_y,linewidth=3,color='red')
+
+                #extract the mean pixel value from this bar
+                value_list = np.zeros(100)
+                for index in range(100):
+                    y_coord = line_y[index]
+                    px_value = self.dat[int(y_coord)][int(self.x)]   #x will be the same...again, by design.
+                    value_list[index] = px_value
+                mean_px = '{:.2f}'.format(np.mean(value_list))
+                self.val.config(text=f'Mean Pixel Value: {mean_px}',font='Ariel 16')
+                self.canvas.draw()
+            
+            else:
+                
+                self.find_closest_bar()   #outputs self.closest_line_index
+                
+                line_mean = self.mean_list[self.closest_line_index]
+                line_coords = self.all_line_coords[self.closest_line_index]
+
+                line_xvals = np.asarray(line_coords)[:,0]
+                line_yvals = np.asarray(line_coords)[:,1]
+
+                self.current_bar, = self.ax.plot([line_xvals[0],line_xvals[-1]],[line_yvals[0],line_yvals[-1]],
+                                                linewidth=3,color='red')
+
+                #extract the mean pixel value from this bar
+                mean_px = '{:.2f}'.format(line_mean)
+
+                self.val.config(text=f'Mean Pixel Value: {mean_px}',font='Ariel 16')
+                self.canvas.draw()
             
         else:
-            print('Keep inside of the image!')
-            self.val.config(text='Pixel Value: None', font='Ariel 16')
+            print('Keep inside of the bounds of either the rectangle or the image!')
+            self.val.config(text='Mean Pixel Value: None', font='Ariel 16')
     
     
     ###FOR RECTANGLES --> CLICK TWICE, DICTATE INCLINATION###
@@ -527,8 +555,8 @@ class MainPage(tk.Frame):
         #create lists
         list_to_mean = []
         self.mean_list = []   #only need to initialize once
-        self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
-        
+        self.all_line_coords = []   #also only need to initialize once --> will give x,y coordinates for every line
+                                    #(hence the variable name).
         
         for i in range(self.n_spaces):  #for the entire n_spaces extent: 
                                         #find x range of between same-index points on opposing sides of the 
@@ -540,15 +568,20 @@ class MainPage(tk.Frame):
             #points from either x4,y4 (index=3) or x1,y1 (index=0)
             #any angle which is NOT 0,90,180,270,360,etc.
             if self.angle%90 != 0:
+                self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b = self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
-                #self.ax.scatter(xpoints,ypoints,s=1)
-
+                
+                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
+                self.all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),3)),
+                                                np.ndarray.tolist(np.round(np.asarray(ypoints),3)))))
+                
                 for n in range(len(ypoints)):
-                    list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
-                    #self.dat[int(round(ypoints[n],3))][int(xpoints[n])]=False
-                self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
+                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
+                    #the column ypoints[n]
+                    list_to_mean.append(self.dat[int(ypoints[n])][int(xpoints[n])])
+
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
             
@@ -557,36 +590,56 @@ class MainPage(tk.Frame):
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
                 b =self.y_rot[0][-(i+1)] - (self.m_rot[2]*self.x_rot[0][-(i+1)])
                 ypoints = self.func(xpoints,self.m_rot[2],b)
-                #self.ax.scatter(xpoints,ypoints,s=1)
-
+                
+                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
+                self.all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),3)),
+                                                np.ndarray.tolist(np.round(np.asarray(ypoints),3)))))
+                
                 for n in range(len(ypoints)):
-                    list_to_mean.append(self.dat[int(round(ypoints[n],5))][int(xpoints[n])])
-                    #self.dat[int(round(ypoints[n],5))][int(xpoints[n])]=False
-                self.all_bars[i][0:self.n_spaces] = np.asarray(list_to_mean)
+                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
+                    #the column ypoints[n]
+                    list_to_mean.append(self.dat[int(ypoints[n])][int(xpoints[n])])
+
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
-
+            
+            
         #90,270,etc.
-        #troubles abound here, though I am unsure why. must fix.
         if ((self.angle/90)%2 != 0) & (self.angle%90 == 0):
-            #
             #y_val start and end are the same at every index for this case
             ypoints = np.linspace(self.y_rot[3][0],self.y_rot[0][-1],self.n_spaces)    
-            list_to_mean = []
-            mean_list = []
 
             for i in range(np.abs(int(self.p1[1]-self.p2[1]))):
                 xpoints = self.x_rot[1]+i        
-                #self.ax.scatter(xpoints,ypoints,s=1)
-                print(len(xpoints),len(ypoints))
                 
+                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
+                self.all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),3)),
+                                                np.ndarray.tolist(np.round(np.asarray(ypoints),3)))))
+
                 for n in range(len(ypoints)):
-                    list_to_mean.append(self.dat[int(round(ypoints[n],3))][int(xpoints[n])])
-                    #self.dat[int(round(ypoints[n]),3)][int(xpoints[n])]=False
-                self.all_bars[i][0:self.n_times] = np.asarray(list_to_mean)
+                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
+                    #the column ypoints[n]
+                    list_to_mean.append(self.dat[int(ypoints[n])][int(xpoints[n])])
+
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
-  
+        
+        #check if all_line_coords arranged from left to right
+        #if not, sort it (flip last list to first, etc.) and reverse mean_list accordingly
+        #first define coordinates of first and second "starting coordinates"
+        first_coor = self.all_line_coords[0][0]
+        second_coor = self.all_line_coords[1][0]
+        
+        #isolate the x values
+        first_x = first_coor[0]
+        second_x = second_coor[0]
+        
+        #if the first x coordinate is greater than the second, then all set. 
+        #otherwise, lists arranged from right to left. fix.
+        #must also flip mean_list so that the values remain matched with the correct lines
+        if first_x>second_x:
+            self.all_line_coords.sort()
+            self.mean_list.reverse()
 
     def create_rectangle(self,x_one=None,x_two=None,y_one=None,y_two=None):
         
@@ -595,8 +648,9 @@ class MainPage(tk.Frame):
 
         except:
             self.angle = 0
-            print('Angle defaulting to 0. Please enter integer angle into box, if desired.')
-        
+            self.angle_box.delete(0,tk.END)
+            self.angle_box.insert(0,str(self.angle))
+            
         try:
             for line in [self.line_eins,self.line_zwei,self.line_drei,self.line_vier]:
                 line_to_remove = line.pop(0)
@@ -611,19 +665,6 @@ class MainPage(tk.Frame):
                 self.line_two = self.ax.plot([x_one,x_two],[y_one,y_one],color='crimson')
                 self.line_three = self.ax.plot([x_two,x_two],[y_one,y_two],color='crimson')
                 self.line_four = self.ax.plot([x_one,x_two],[y_two,y_two],color='crimson')
-                
-                #add if I would like to print the average pixel value
-                '''
-                try:
-                    x_values=np.sort(np.array([x_one,x_two]))
-                    y_values=np.sort(np.array([y_one,y_two]))
-
-                    px_in_sq = self.dat[int(x_values[0]):int(x_values[1]), int(y_values[0]):int(y_values[1])]
-                    self.sq_mean_value = np.round(np.mean(px_in_sq),3)
-                    print(f'Mean pixel value within rectangle: {self.sq_mean_value}')
-                except TypeError:
-                    pass
-                '''
                 
             else:
             
@@ -663,7 +704,8 @@ class MainPage(tk.Frame):
             self.angle = float(self.angle_box.get())
         except:
             self.angle = 0
-            print('Angle defaulting to 0. Please enter integer angle into box, if desired.')
+            self.angle_box.delete(0,tk.END)
+            self.angle_box.insert(0,str(self.angle))
         
         #collect the x and y coordinates of the click event
         #if first click event already done, then just define x2, y2. otherwise, define x1, y1.
@@ -674,15 +716,6 @@ class MainPage(tk.Frame):
             self.x1 = event.xdata
             self.y1 = event.ydata
             first_time=True
-        
-        '''
-        #remove the small square aperture, if applicable (i.e., user drew then switched radio buttons). skip otherwise.
-        try:
-            self.current_square.remove()
-        except ValueError:
-            #there is no current square to remove
-            pass
-        '''
         
         #the user has clicked only the 'first' rectangle corner...
         if (self.x1 is not None) & (self.x2 is None):
@@ -765,7 +798,8 @@ class MainPage(tk.Frame):
             self.angle = float(self.angle_box.get())
         except:
             self.angle = 0
-            print('Angle defaulting to 0. Please enter integer angle into box, if desired.')
+            self.angle_box.delete(0,tk.END)
+            self.angle_box.insert(0,str(self.angle))
         
         self.note_names = 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5-D6'   #D-major
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
@@ -794,7 +828,7 @@ class MainPage(tk.Frame):
             self.yminmax_entry.delete(0,tk.END)
             self.yminmax_entry.insert(0,f'{self.ymin}, {self.ymax}')
 
-            band = self.dat[:,self.y_min:self.y_max]   #isolates pixels within horizontal band across the image from y_min to y_max
+            band = self.dat[:,self.ymin:self.ymax]   #isolates pixels within horizontal band across the image from y_min to y_max
             strips = []   #create empty array for 1px strips
             mean_strip_values = np.zeros(self.xmax-self.xmin)
             for i in range(self.xmin,self.xmax):
@@ -912,7 +946,7 @@ class MainPage(tk.Frame):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-    app.destroy()    
+    #app.destroy()    
     
     
     #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
