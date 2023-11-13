@@ -256,11 +256,6 @@ class MainPage(tk.Frame):
                                      command=self.midi_setup_bar)
         self.midi_button.grid(row=8,column=0,columnspan=2)
     
-    #def add_angle_buttons(self):
-    #    self.angle_button = tk.Button(self.frame_box, text='Rotate',padx=20,pady=10,font=self.helv20,
-    #                                  command=self.create_rectangle)
-    #    self.angle_button.grid(row=2,column=0,columnspan=3)
-    
     def add_angle_buttons(self):
         self.angle_button = tk.Button(self.frame_box, text='Rotate',padx=5,pady=10,font=self.helv20,
                                       command=self.create_rectangle)
@@ -351,10 +346,15 @@ class MainPage(tk.Frame):
         
         if int(self.var.get())==0:
             self.canvas.mpl_disconnect(self.connect_event)
+            self.canvas.mpl_disconnect(self.connect_event_midi)
             self.connect_event = self.canvas.mpl_connect('button_press_event',self.drawSqRec)
         if int(self.var.get())==1:
             self.canvas.mpl_disconnect(self.connect_event)
             self.connect_event = self.canvas.mpl_connect('button_press_event',self.placeBar)
+            try:
+                self.connect_event_midi = self.canvas.mpl_connect('button_press_event', self.midi_singlenote)
+            except:
+                pass
          
     #create command function to print info popup message
     def popup(self):
@@ -374,10 +374,15 @@ class MainPage(tk.Frame):
             result=tree.query([coord])
             self.distances.append(result[0])
         
-        self.closest_line_index = np.where(self.distances==np.min(self.distances))[0][0]
-
-    def placeBar(self, event):  
+        self.closest_line_index = np.where(np.asarray(self.distances)==np.min(self.distances))[0][0]
+    
+    def find_closest_mean(self,linemean):
         
+        #from https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
+        self.closest_mean_index = np.where(np.asarray(self.mean_list) == min(self.mean_list, key=lambda x:abs(x-float(linemean))))[0][0]
+        
+    
+    def placeBar(self, event):  
         
         self.x=event.xdata
         self.y=event.ydata
@@ -391,7 +396,22 @@ class MainPage(tk.Frame):
         #if user clicks outside the image bounds, then problem-o.
         if event.inaxes:
             
+            #if no rotation of rectangle, just create some vertical bars.
             if self.angle==0:
+                
+                #if x is within the rectangle bounds, all is well. 
+                if (self.x<=self.xmax) & (self.x>=self.xmin):
+                    pass
+                else:
+                    #if x is beyond the right side of the rectangle, line will be placed at rightmost end
+                    if (self.x>=self.xmax):
+                        self.x = self.xmax
+                    
+                    #if x is beyond the left side of the rectangle, line will be placed at leftmost end
+                    if (self.x<=self.xmin):
+                        self.x = self.xmin
+                        
+                        
                 line_x = np.zeros(150)+int(self.x)
                 line_y = np.linspace(self.ymin,self.ymax,150)       
                 self.current_bar, = self.ax.plot(line_x,line_y,linewidth=3,color='red')
@@ -404,7 +424,7 @@ class MainPage(tk.Frame):
                     value_list[index] = px_value
                 mean_px = '{:.2f}'.format(np.mean(value_list))
                 self.val.config(text=f'Mean Pixel Value: {mean_px}',font='Ariel 16')
-                self.canvas.draw()
+                self.canvas.draw()      
             
             else:
                 
@@ -412,10 +432,14 @@ class MainPage(tk.Frame):
                 
                 line_mean = self.mean_list[self.closest_line_index]
                 line_coords = self.all_line_coords[self.closest_line_index]
-
+            
                 line_xvals = np.asarray(line_coords)[:,0]
                 line_yvals = np.asarray(line_coords)[:,1]
-
+                
+                if self.angle==90:
+                    line_xvals = np.asarray(line_coords)[:,0]
+                    line_yvals = np.asarray(line_coords)[:,1]
+                
                 self.current_bar, = self.ax.plot([line_xvals[0],line_xvals[-1]],[line_yvals[0],line_yvals[-1]],
                                                 linewidth=3,color='red')
 
@@ -425,6 +449,9 @@ class MainPage(tk.Frame):
                 self.val.config(text=f'Mean Pixel Value: {mean_px}',font='Ariel 16')
                 self.canvas.draw()
             
+            self.mean_px = mean_px
+            
+                                           
         else:
             print('Keep inside of the bounds of either the rectangle or the image!')
             self.val.config(text='Mean Pixel Value: None', font='Ariel 16')
@@ -661,10 +688,10 @@ class MainPage(tk.Frame):
         if (self.angle==0)|(isinstance(self.angle,str)):
             if x_one is not None:    
                          
-                self.line_one = self.ax.plot([x_one,x_one],[y_one,y_two],color='crimson')
-                self.line_two = self.ax.plot([x_one,x_two],[y_one,y_one],color='crimson')
-                self.line_three = self.ax.plot([x_two,x_two],[y_one,y_two],color='crimson')
-                self.line_four = self.ax.plot([x_one,x_two],[y_two,y_two],color='crimson')
+                self.line_one = self.ax.plot([x_one,x_one],[y_one,y_two],color='crimson',linewidth=2)
+                self.line_two = self.ax.plot([x_one,x_two],[y_one,y_one],color='crimson',linewidth=2)
+                self.line_three = self.ax.plot([x_two,x_two],[y_one,y_two],color='crimson',linewidth=2)
+                self.line_four = self.ax.plot([x_one,x_two],[y_two,y_two],color='crimson',linewidth=2)
                 
             else:
             
@@ -673,10 +700,10 @@ class MainPage(tk.Frame):
                 x1,x2,x3,x4=self.one_rot[0],self.two_rot[0],self.three_rot[0],self.four_rot[0]
                 y1,y2,y3,y4=self.one_rot[1],self.two_rot[1],self.three_rot[1],self.four_rot[1]
 
-                self.line_eins = self.ax.plot([x1,x3],[y1,y3],color='crimson')   #1--3
-                self.line_zwei = self.ax.plot([x1,x4],[y1,y4],color='crimson')   #1--4
-                self.line_drei = self.ax.plot([x2,x3],[y2,y3],color='crimson')   #2--3
-                self.line_vier = self.ax.plot([x2,x4],[y2,y4],color='crimson')   #2--4
+                self.line_eins = self.ax.plot([x1,x3],[y1,y3],color='crimson',linewidth=2)   #1--3
+                self.line_zwei = self.ax.plot([x1,x4],[y1,y4],color='crimson',linewidth=2)   #1--4
+                self.line_drei = self.ax.plot([x2,x3],[y2,y3],color='crimson',linewidth=2)   #2--3
+                self.line_vier = self.ax.plot([x2,x4],[y2,y4],color='crimson',linewidth=2)   #2--4
 
                 self.canvas.draw()
 
@@ -755,20 +782,6 @@ class MainPage(tk.Frame):
             except:
                 pass
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     # Function for opening the file explorer window
     def browseFiles(self):
         filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_mask/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
@@ -792,7 +805,7 @@ class MainPage(tk.Frame):
         self.vel_min = int(self.vel_min_entry.get())
         self.vel_max = int(self.vel_max_entry.get())
         self.bpm = int(self.bpm_entry.get())
-        self.program = int(self.program_entry.get())
+        self.program = int(self.program_entry.get())   #the instrument!
         self.duration = float(self.duration_entry.get())
         try:
             self.angle = float(self.angle_box.get())
@@ -805,29 +818,39 @@ class MainPage(tk.Frame):
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
         self.soundfont = '/opt/anaconda3/share/soundfonts/SM64SF_V2.sf2'
         
-        if self.angle == 0:
-        
-            #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image dimensions (for x parameters) and galaxy optical D25 (for y parameters)
-            try:
+        #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
+        try:
+            if self.angle==0:
+                
                 self.xmin = int(self.event_bounds[2]) if (self.event_bounds[0]>self.event_bounds[2]) else int(self.event_bounds[0])
                 self.xmax = int(self.event_bounds[0]) if (self.event_bounds[0]>self.event_bounds[2]) else int(self.event_bounds[2])
-            except:
-                print('Defaulting to image parameters for xmin, xmax; ymin, ymax.')
-                self.xmin=0
-                self.xmax=self.im_length
-
-            try:
                 self.ymin = int(self.event_bounds[3]) if (self.event_bounds[1]>self.event_bounds[3]) else int(self.event_bounds[1])
                 self.ymax = int(self.event_bounds[1]) if (self.event_bounds[1]>self.event_bounds[3]) else int(self.event_bounds[3])
-            except:
-                self.ymin = int(self.im_length/2-(0.20*self.im_length))
-                self.ymax = int(self.im_length/2+(0.20*self.im_length))
-
-            self.xminmax_entry.delete(0,tk.END)
-            self.xminmax_entry.insert(0,f'{self.xmin}, {self.xmax}')
-            self.yminmax_entry.delete(0,tk.END)
-            self.yminmax_entry.insert(0,f'{self.ymin}, {self.ymax}')
-
+            
+            #if rectangle is rotated, use rotated coordinates to find mins and maxs
+            else:
+                xvertices=np.array([self.one_rot[0],self.two_rot[0],self.three_rot[0],self.four_rot[0]])
+                yvertices=np.array([self.one_rot[1],self.two_rot[1],self.three_rot[1],self.four_rot[1]])
+                
+                self.xmin = np.min(xvertices)
+                self.xmax = np.max(xvertices)
+                
+                self.ymin = np.min(yvertices)
+                self.ymax = np.max(yvertices)
+                
+        except:
+            print('Defaulting to image parameters for xmin, xmax; ymin, ymax.')
+            self.xmin=0
+            self.xmax=self.im_length
+            self.ymin = int(self.im_length/2-(0.20*self.im_length))
+            self.ymax = int(self.im_length/2+(0.20*self.im_length))
+            
+        self.xminmax_entry.delete(0,tk.END)
+        self.xminmax_entry.insert(0,f'{self.xmin}, {self.xmax}')
+        self.yminmax_entry.delete(0,tk.END)
+        self.yminmax_entry.insert(0,f'{self.ymin}, {self.ymax}')
+        
+        if self.angle == 0:
             band = self.dat[:,self.ymin:self.ymax]   #isolates pixels within horizontal band across the image from y_min to y_max
             strips = []   #create empty array for 1px strips
             mean_strip_values = np.zeros(self.xmax-self.xmin)
@@ -868,6 +891,9 @@ class MainPage(tk.Frame):
         self.midi_allnotes() 
         
     def midi_allnotes(self):
+        
+        self.create_rectangle()
+        
         #create midi file object, add tempo
         self.memfile = BytesIO()   #create working memory file (allows me to play the note without saving the file...yay!)
         midi_file = MIDIFile(1) #one track
@@ -882,39 +908,6 @@ class MainPage(tk.Frame):
         self.memfile.seek(0)
         mixer.music.load(self.memfile)
         mixer.music.play()
-    
-    def midi_square(self,event):
-
-        sq_data = self.map_value(float(self.sq_mean_value),np.min(self.dat),np.max(self.dat),0,1)
-        print(f'Note: max pixel value is {np.max(self.dat)}, located at {np.where(self.dat==np.max(self.dat))}')
-        sq_data_scaled = sq_data**self.y_scale
-
-        note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
-
-        #MAP DATA TO MIDI NOTE
-        #assigns midi note number to whichever sq_data_scaled is nearest
-        if sq_data<0:
-            note_index=0
-        else:
-            note_index = round(self.map_value(sq_data_scaled,0,1,0,len(note_midis)-1))
-        self.midi_data = note_midis[note_index]
-
-        self.memfile = BytesIO()
-
-        midi_file = MIDIFile(1)
-        midi_file.addTempo(track=0, time=0, tempo=self.bpm)
-        midi_file.addProgramChange(tracknum=0, channel=0, time=0, program=self.program)
-
-
-        midi_file.addNote(track=0, channel=0, pitch=int(note_midis[note_index]), time=0, duration=1, volume=90)
-        midi_file.writeFile(self.memfile)
-        #with open(homedir+'/Desktop/test.mid',"wb") as f:
-        #    self.midi_file.writeFile(f)
-
-        mixer.init()
-        self.memfile.seek(0)   #for whatever reason, have to manually 'rewind' the track in order for mixer to play
-        mixer.music.load(self.memfile)
-        mixer.music.play()
         
     def midi_singlenote(self,event):
         #the setup for playing *just* one note...using the bar technique. :-)
@@ -925,13 +918,43 @@ class MainPage(tk.Frame):
         midi_file.addTempo(track=0, time=0, tempo=self.bpm)
         midi_file.addProgramChange(tracknum=0, channel=0, time=0, program=self.program)
         
-        #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes between arrays of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
-        cushion_left = np.zeros(self.xmin)
-        cushion_right = np.zeros(self.xmax - (self.xmin+len(self.midi_data)))
-        midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data,cushion_right]))
-        vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data,cushion_right]))
+        #for the instance where there is no rotation
+        if self.angle==0:
+            
+            #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes between arrays of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
+            cushion_left = np.zeros(int(self.xmin))
+            #cushion_right = np.zeros(self.im_length - (self.xmin+len(self.midi_data)))
+            cushion_right=np.zeros(0)
+            midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data,cushion_right]))
+            vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data,cushion_right]))
 
-        midi_file.addNote(track=0, channel=0, pitch=int(midi_edited[self.x]), time=self.t_data[1], duration=1, volume=int(vel_edited[self.x]))   #isolate the one note corresponding to the click event, add to midi file
+            print('all midi data:',self.midi_data)
+            print('midi edited data:',midi_edited)
+            print('index:',int(self.x))
+        
+            #if only slightly out of bounds, then just play the previous midi note.
+            try:
+                single_pitch = int(midi_edited[int(self.x)])
+                single_volume = int(vel_edited[int(self.x)]) 
+                print('selected midi note:',midi_edited[int(self.x)])
+
+            except:
+                single_pitch = int(midi_edited[int(self.xmax)-1])
+                single_volume = int(vel_edited[int(self.xmax)-1]) 
+                print('selected midi note:',midi_edited[int(self.xmax)-1])
+
+        #if there is rotation, ...
+        else:
+            #determine the index at which the mean_list element is closest to the current bar mean
+            #outputs self.closest_mean_index
+            self.find_closest_mean(self.mean_px)
+            
+            #extract the midi and velocity notes associated with that index. 
+            single_pitch = self.midi_data[self.closest_mean_index]
+            single_volume = self.vel_data[self.closest_mean_index]
+            
+            
+        midi_file.addNote(track=0, channel=0, pitch=single_pitch, time=self.t_data[1], duration=1, volume=single_volume)   #isolate the one note corresponding to the click event, add to midi file; the +1 is to account for the silly python notation conventions
         
         midi_file.writeFile(self.memfile)
         #with open(homedir+'/Desktop/test.mid',"wb") as f:
