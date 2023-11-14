@@ -376,10 +376,10 @@ class MainPage(tk.Frame):
         
         self.closest_line_index = np.where(np.asarray(self.distances)==np.min(self.distances))[0][0]
     
-    def find_closest_mean(self,linemean):
+    def find_closest_mean(self,meanlist):
         
         #from https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
-        self.closest_mean_index = np.where(np.asarray(self.mean_list) == min(self.mean_list, key=lambda x:abs(x-float(linemean))))[0][0]
+        self.closest_mean_index = np.where(np.asarray(meanlist) == min(meanlist, key=lambda x:abs(x-float(self.mean_px))))[0][0]
         
     
     def placeBar(self, event):  
@@ -397,7 +397,7 @@ class MainPage(tk.Frame):
         if event.inaxes:
             
             #if no rotation of rectangle, just create some vertical bars.
-            if self.angle==0:
+            if self.angle == 0:
                 
                 #if x is within the rectangle bounds, all is well. 
                 if (self.x<=self.xmax) & (self.x>=self.xmin):
@@ -411,14 +411,14 @@ class MainPage(tk.Frame):
                     if (self.x<=self.xmin):
                         self.x = self.xmin
                         
-                        
-                line_x = np.zeros(150)+int(self.x)
-                line_y = np.linspace(self.ymin,self.ymax,150)       
+                n_pixels = int(self.ymax-self.ymin)   #number of pixels between ymin and ymax
+                line_x = np.zeros(n_pixels)+int(self.x)
+                line_y = np.linspace(self.ymin,self.ymax,n_pixels)       
                 self.current_bar, = self.ax.plot(line_x,line_y,linewidth=3,color='red')
 
                 #extract the mean pixel value from this bar
-                value_list = np.zeros(100)
-                for index in range(100):
+                value_list = np.zeros(n_pixels)
+                for index in range(n_pixels):
                     y_coord = line_y[index]
                     px_value = self.dat[int(y_coord)][int(self.x)]   #x will be the same...again, by design.
                     value_list[index] = px_value
@@ -435,10 +435,6 @@ class MainPage(tk.Frame):
             
                 line_xvals = np.asarray(line_coords)[:,0]
                 line_yvals = np.asarray(line_coords)[:,1]
-                
-                if self.angle==90:
-                    line_xvals = np.asarray(line_coords)[:,0]
-                    line_yvals = np.asarray(line_coords)[:,1]
                 
                 self.current_bar, = self.ax.plot([line_xvals[0],line_xvals[-1]],[line_yvals[0],line_yvals[-1]],
                                                 linewidth=3,color='red')
@@ -685,7 +681,7 @@ class MainPage(tk.Frame):
         except:
             pass
         
-        if (self.angle==0)|(isinstance(self.angle,str)):
+        if (self.angle== 0)|(isinstance(self.angle,str)):
             if x_one is not None:    
                          
                 self.line_one = self.ax.plot([x_one,x_one],[y_one,y_two],color='crimson',linewidth=2)
@@ -820,7 +816,8 @@ class MainPage(tk.Frame):
         
         #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
         try:
-            if self.angle==0:
+            #for the case where the angle is not rotated
+            if self.angle == 0:
                 
                 self.xmin = int(self.event_bounds[2]) if (self.event_bounds[0]>self.event_bounds[2]) else int(self.event_bounds[0])
                 self.xmax = int(self.event_bounds[0]) if (self.event_bounds[0]>self.event_bounds[2]) else int(self.event_bounds[2])
@@ -851,13 +848,21 @@ class MainPage(tk.Frame):
         self.yminmax_entry.insert(0,f'{self.ymin}, {self.ymax}')
         
         if self.angle == 0:
-            band = self.dat[:,self.ymin:self.ymax]   #isolates pixels within horizontal band across the image from y_min to y_max
+            #band = self.dat[:,self.ymin:self.ymax]   #isolates pixels within horizontal band across the image from y_min to y_max
+            cropped_data = self.dat[self.ymin:self.ymax, self.xmin:self.xmax]   #[rows,columns]; isolates pixels within the user-defined region
             strips = []   #create empty array for 1px strips
-            mean_strip_values = np.zeros(self.xmax-self.xmin)
-            for i in range(self.xmin,self.xmax):
-                strips.append(band[i,:])   #individual vertical strips
-                mean_strip_values[i-self.xmin] = np.mean(strips[i-self.xmin])   #the 'ydata'; self.xmin-i for correct indices
-    
+            mean_strip_values = []   #create empty array for mean px values of the strips
+            vertical_lines = [cropped_data[:, i] for i in range(self.xmax-self.xmin)]
+            
+            for line in vertical_lines:
+                mean_strip_values.append(np.mean(line))
+            
+            #for i in range(self.xmin,self.xmax):
+            #    strips.append(band[i,:])   #individual vertical strips
+            #    mean_strip_values[i-self.xmin] = np.mean(strips[i-self.xmin])   #the 'ydata'; i-self.xmin for correct indices (will go from 0 to self.xmax-self.xmin)
+            
+            self.mean_list_norot = mean_strip_values
+        
         if self.angle != 0:
             self.RecRot()
             mean_strip_values = self.mean_list
@@ -871,17 +876,18 @@ class MainPage(tk.Frame):
         y_data = self.map_value(mean_strip_values,min(mean_strip_values),max(mean_strip_values),0,1)   #normalizes values
         y_data_scaled = y_data**self.y_scale
         
+        #the following converts note names into midi notes
         note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
         n_notes = len(note_midis)
         #print('Resolution:',n_notes,'notes')
-
-        #MAPPING DATA TO MIDIS!
+                                                            
+        #MAPPING DATA TO THE MIDI NOTES!        
         self.midi_data = []
         #for every data point, map y_data_scaled values such that smallest/largest px is lowest/highest note
         for i in range(len(self.t_data)):   #assigns midi note number to whichever y_data_scaled[i] is nearest
             note_index = round(self.map_value(y_data_scaled[i],0,1,0,len(note_midis)-1))
             self.midi_data.append(note_midis[note_index])
-    
+
         #map data to note velocities (equivalent to the sound volume)
         self.vel_data = []
         for i in range(len(y_data_scaled)):
@@ -919,40 +925,41 @@ class MainPage(tk.Frame):
         midi_file.addProgramChange(tracknum=0, channel=0, time=0, program=self.program)
         
         #for the instance where there is no rotation
-        if self.angle==0:
+        if self.angle == 0:
             
-            #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes between arrays of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
+            '''
+            #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes with an array of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
             cushion_left = np.zeros(int(self.xmin))
-            #cushion_right = np.zeros(self.im_length - (self.xmin+len(self.midi_data)))
-            cushion_right=np.zeros(0)
-            midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data,cushion_right]))
-            vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data,cushion_right]))
+            midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data]))
+            vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data]))
 
-            print('all midi data:',self.midi_data)
-            print('midi edited data:',midi_edited)
-            print('index:',int(self.x))
+            #print('all midi data:',self.midi_data)
+            #print('midi edited data:',midi_edited)
+            #print('index:',int(self.x))
         
-            #if only slightly out of bounds, then just play the previous midi note.
+            #if out of bounds, then just play the last MIDI note
             try:
                 single_pitch = int(midi_edited[int(self.x)])
                 single_volume = int(vel_edited[int(self.x)]) 
-                print('selected midi note:',midi_edited[int(self.x)])
+                print('note played:',single_pitch)
 
             except:
-                single_pitch = int(midi_edited[int(self.xmax)-1])
-                single_volume = int(vel_edited[int(self.xmax)-1]) 
-                print('selected midi note:',midi_edited[int(self.xmax)-1])
-
-        #if there is rotation, ...
+                single_pitch = int(midi_edited[-1])
+                single_volume = int(vel_edited[-1]) 
+            '''
+            self.find_closest_mean(self.mean_list_norot)  #determine the index at which the mean_list element    
+                                                          #is closest to the current bar mean outputs 
+                                                          #self.closest_mean_index
         else:
-            #determine the index at which the mean_list element is closest to the current bar mean
-            #outputs self.closest_mean_index
-            self.find_closest_mean(self.mean_px)
+            self.find_closest_mean(self.mean_list)
             
-            #extract the midi and velocity notes associated with that index. 
-            single_pitch = self.midi_data[self.closest_mean_index]
-            single_volume = self.vel_data[self.closest_mean_index]
+        #extract the midi and velocity notes associated with that index. 
+        single_pitch = self.midi_data[self.closest_mean_index]
+        single_volume = self.vel_data[self.closest_mean_index]
             
+        #print('index:',self.closest_mean_index,'midi note:',single_pitch)
+        #print('mean_list',self.mean_list_norot)
+        #print('midi_notes',self.midi_data)
             
         midi_file.addNote(track=0, channel=0, pitch=single_pitch, time=self.t_data[1], duration=1, volume=single_volume)   #isolate the one note corresponding to the click event, add to midi file; the +1 is to account for the silly python notation conventions
         
