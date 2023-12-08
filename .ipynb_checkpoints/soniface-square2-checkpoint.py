@@ -82,6 +82,30 @@ class MainPage(tk.Frame):
         self.y2=None
         self.angle=0
         
+        #list for different key signatures
+        
+        self.note_dict = {
+           'C Major': 'C2-D2-E2-F2-G2-A2-B2-C3-D3-E3-F3-G3-A3-B3-C4-D4-E4-F4-G4-A4-B4-C5-D5-E5-F5-G5-A5-B5',
+           'G Major': 'G2-A2-B2-C2-D2-E2-F#2-G3-A3-B3-C3-D3-E3-F#3-G4-A4-B4-C4-D4-E4-F#4-G5-A5-B5-C5-D5-E5-F#5',
+           'D Major': 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5',
+           'A Major': 'A2-B2-C#2-D2-E2-F#2-G#2-A3-B3-C#3-D3-E3-F#3-G#3-A4-B4-C#4-D4-E4-F#4-G#4-A5-B5-C#5-D5-E5-F#5-G#5',
+           'E Major': 'E2-F#2-G#2-A2-B2-C#2-D#2-E3-F#3-G#3-A3-B3-C#3-D#3-E4-F#4-G#4-A4-B4-C#4-D#4-E5-F#5-G#5-A5-B5-C#5-D#5',
+           'B Major': 'B2-C#2-D#2-E2-F#2-G#2-A#2-B3-C#3-D#3-E3-F#3-G#3-A#3-B4-C#4-D#4-E4-F#4-G#4-A#4-B5-C#5-D#5-E5-F#5-G#5-A#5',
+           'F# Major': 'F#2-G#2-A#2-B2-C#2-D#2-E#2-F#3-G#3-A#3-B3-C#3-D#3-E#3-F#4-G#4-A#4-B4-C#4-D#4-E#4-F#5-G#5-A#5-B5-C#5-D#5-E#5', 
+           'Gb Major': 'Gb2-Ab2-Bb2-Cb2-Db2-Eb2-F2-Gb3-Ab3-Bb3-Cb3-Db3-Eb3-F3-Gb4-Ab4-Bb4-Cb4-Db4-Eb4-F4-Gb5-Ab5-Bb5-Cb5-Db5-Eb5-F5',
+           'Db Major': 'Db2-Eb2-F2-Gb2-Ab2-Bb2-C2-Db3-Eb3-F3-Gb3-Ab3-Bb3-C3-Db4-Eb4-F4-Gb4-Ab4-Bb4-C4-Db5-Eb5-F5-Gb5-Ab5-Bb5-C5',
+           'Ab Major': 'Ab2-Bb2-C2-Db2-Eb2-F2-G2-Ab3-Bb3-C3-Db3-Eb3-F3-G3-Ab4-Bb4-C4-Db4-Eb4-F4-G4-Ab5-Bb5-C5-Db5-Eb5-F5-G5', 
+           'Eb Major': 'Eb2-F2-G2-Ab2-Bb2-C2-D2-Eb3-F3-G3-Ab3-Bb3-C3-D3-Eb4-F4-G4-Ab4-Bb4-C4-D4-Eb5-F5-G5-Ab5-Bb5-C5-D5',
+           'Bb Major': 'Bb2-C2-D2-Eb2-F2-G2-A2-Bb3-C3-D3-Eb3-F3-G3-A3-Bb4-C4-D4-Eb4-F4-G4-A4-Bb5-C5-D5-Eb5-F5-G5-A5',
+           'F Major': 'F2-G2-A2-Bb2-C2-D2-E2-F3-G3-A3-Bb3-C3-D3-E3-F4-G4-A4-Bb4-C4-D4-E4-F5-G5-A5-Bb5-C5-D5-E5', 
+        }
+        
+        #isolate the key signature names --> need for the dropdown menu
+        self.keyvar_options=list(self.note_dict.keys())
+
+        self.keyvar = tk.StringVar()
+        self.keyvar.set(self.keyvar_options[2])
+        
         #defines the number of rows/columns to resize when resizing the entire window.
         self.rowspan=10
         
@@ -112,7 +136,7 @@ class MainPage(tk.Frame):
             
         #create soni frame, which holds the event button for converting data into sound (midifile).
         #there are also heaps of text boxes with which the user can manipulate the sound conversion parameters
-        self.frame_soni=tk.LabelFrame(self,text='Soni Parameters (Click "Sonify" to play)',padx=5,pady=5)
+        self.frame_soni=tk.LabelFrame(self,text='Parameters (Click "Sonify" to play)',padx=5,pady=5)
         self.frame_soni.grid(row=6,column=2,sticky='se')
         for i in range(self.rowspan):
             self.frame_soni.columnconfigure(i, weight=1)
@@ -134,7 +158,7 @@ class MainPage(tk.Frame):
         
         self.galaxy_to_display()
         '''
-        INSERT FUNCTIONS TO RUN HERE.
+        INSERT INITIATION FUNCTIONS TO RUN HERE.
         '''
         self.initiate_vals()
         self.add_info_button()
@@ -202,11 +226,12 @@ class MainPage(tk.Frame):
         self.xminmax_entry.insert(0,'x1, x2')
         self.xminmax_entry.grid(row=4,column=1,columnspan=1)
         
-        yminmax_lab = tk.Label(self.frame_soni,text='ymin, ymax').grid(row=5,column=0)
-        self.yminmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
-                                      font='Arial 15')
-        self.yminmax_entry.insert(0,'y1, y2')
-        self.yminmax_entry.grid(row=5,column=1,columnspan=1)
+        key_lab = tk.Label(self.frame_soni,text='Key Signature').grid(row=5,column=0)
+        self.key_menu = tk.OptionMenu(self.frame_soni, self.keyvar, *self.keyvar_options)
+        self.key_menu.config(bg='black',fg='black',font='Arial 15')
+        #self.key_menu = tk.OptionMenu(self.frame_soni, self.keyvar, self.keyvar_options, width=10, borderwidth=2,
+        #                        bg='black', fg='lime green', font='Arial 15')
+        self.key_menu.grid(row=5,column=1,columnspan=1)
         
         program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=6,column=0)
         self.program_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
@@ -268,15 +293,29 @@ class MainPage(tk.Frame):
         self.decarrow.grid(row=2,column=0,columnspan=1)
     
     def increment(self):
-        self.angle += 1
-        self.angle_box.delete(0,tk.END)
-        self.angle_box.insert(0,str(self.angle))
+        #a few lines in other functions switch self.angle from 90 (or 270) to 89.9
+        #to prevent this 89.9 number from being inserted into the angle_box and then incremented/decremented, 
+        #I'll just pull the self.angle float again.
+        self.angle = float(self.angle_box.get())
+        self.angle += 1   #increment
+        self.angle_box.delete(0,tk.END)   #delete current textbox entry
+        self.angle_box.insert(0,str(self.angle))   #update entry with incremented angle
+        
+        #automatically rotate the rectangle when + is clicked
+        self.create_rectangle()
     
     def decrement(self):
-        self.angle -= 1
-        self.angle_box.delete(0,tk.END)
-        self.angle_box.insert(0,str(self.angle))
-    
+        #a few lines in other functions switch self.angle from 90 (or 270) to 89.9 (for instance)
+        #to prevent this number from being inserted into the angle_box and then incremented/decremented, 
+        #I'll just pull the self.angle float again.
+        self.angle = float(self.angle_box.get())
+        self.angle -= 1   #decrement
+        self.angle_box.delete(0,tk.END)   #delete current textbox entry
+        self.angle_box.insert(0,str(self.angle))   #update entry with decremented angle
+        
+        #automatically rotate when - is clicked
+        self.create_rectangle()
+        
     def initiate_canvas(self):
         
         #delete any and all miscellany (galaxy image, squares, lines) from the canvas (created using 
@@ -397,7 +436,7 @@ class MainPage(tk.Frame):
         if event.inaxes:
             
             #if no rotation of rectangle, just create some vertical bars.
-            if self.angle == 0:
+            if (self.angle == 0):
                 
                 #if x is within the rectangle bounds, all is well. 
                 if (self.x<=self.xmax) & (self.x>=self.xmin):
@@ -476,7 +515,7 @@ class MainPage(tk.Frame):
         self.p2 = [self.event_bounds[2],self.event_bounds[3]]   #coordinates of second click event
         
         if self.angle%90 != 0:      #if angle is not divisible by 90, can rotate using this algorithm. 
-            
+                        
             n_spaces = int(np.abs(self.p1[0] - self.p2[0]))   #number of 'pixels' between x coordinates
             
             (xc,yc) = ((self.p1[0]+self.p2[0])/2, (self.p1[1]+self.p2[1])/2)
@@ -536,41 +575,8 @@ class MainPage(tk.Frame):
             self.two_rot = self.p2
             self.three_rot = (self.p1[0],self.p2[1])
             self.four_rot = (self.p2[0],self.p1[1])
-            
 
-        else:                   #if angle is divisible by 90 but is 90, 270, ..., rectangle perpendicular
-                                #to the original
-            
-            n_spaces = int(np.abs(self.p1[1] - self.p2[1]))   #rectangle 'length' now the y values
-            
-            (xc,yc) = ((self.p1[0]+self.p2[0])/2, (self.p1[1]+self.p2[1])/2)
-            one_rot = self.rotate(point_to_be_rotated = self.p1, center_point = (xc,yc))
-            two_rot = self.rotate(point_to_be_rotated = self.p2, center_point = (xc,yc))
-            three_rot = self.rotate(point_to_be_rotated = (self.p1[0],self.p2[1]), center_point = (xc,yc))
-            four_rot = self.rotate(point_to_be_rotated = (self.p2[0],self.p1[1]), center_point = (xc,yc))
-            
-            y1 = np.zeros(50)+self.p1[0]
-            x1 = np.linspace(self.p2[1],self.p1[1],n_spaces)
-
-            y2 = np.linspace(self.p1[0],self.p2[0],n_spaces)
-            x2 = np.zeros(50)+self.p2[1]
-
-            y3 = np.linspace(self.p2[0],self.p1[0],n_spaces)
-            x3 = np.zeros(50)+self.p1[1]
-
-            y4 = np.zeros(50)+self.p2[0]
-            x4 = np.linspace(self.p1[1],self.p2[1],n_spaces)
-
-            self.x_rot = [x1,x2,x3,x4]
-            self.y_rot = [y1,y2,y3,y4]
-            self.m_rot = [0,0,0,0]
-            self.n_spaces = n_spaces
-            
-            self.one_rot = one_rot
-            self.two_rot = two_rot
-            self.three_rot = three_rot
-            self.four_rot = four_rot
-            
+        
     def RecRot(self):
     
         self.get_xym()   #defines and initiates self.x_rot, self.y_rot, self.m_rot
@@ -589,7 +595,7 @@ class MainPage(tk.Frame):
                                         #proceed to next set of elements, etc.
 
             #points from either x4,y4 (index=3) or x1,y1 (index=0)
-            #any angle which is NOT 0,90,180,270,360,etc.
+            #any angle which is NOT 0,180,360,etc.
             if self.angle%90 != 0:
                 self.all_bars = np.zeros(self.n_spaces**2).reshape(self.n_spaces,self.n_spaces)
                 xpoints = np.linspace(self.x_rot[3][i],self.x_rot[0][-(i+1)],self.n_spaces)
@@ -626,27 +632,6 @@ class MainPage(tk.Frame):
                 self.mean_list.append(np.mean(list_to_mean))
                 list_to_mean = []
             
-            
-        #90,270,etc.
-        if ((self.angle/90)%2 != 0) & (self.angle%90 == 0):
-            #y_val start and end are the same at every index for this case
-            ypoints = np.linspace(self.y_rot[3][0],self.y_rot[0][-1],self.n_spaces)    
-
-            for i in range(np.abs(int(self.p1[1]-self.p2[1]))):
-                xpoints = self.x_rot[1]+i        
-                
-                #convert xpoint, ypoint to arrays, round all elements to 2 decimal places, convert back to lists
-                self.all_line_coords.append(list(zip(np.ndarray.tolist(np.round(np.asarray(xpoints),3)),
-                                                np.ndarray.tolist(np.round(np.asarray(ypoints),3)))))
-
-                for n in range(len(ypoints)):
-                    #from the full data grid x, isolate all of values occupying the rows (xpoints) in 
-                    #the column ypoints[n]
-                    list_to_mean.append(self.dat[int(ypoints[n])][int(xpoints[n])])
-
-                self.mean_list.append(np.mean(list_to_mean))
-                list_to_mean = []
-        
         #check if all_line_coords arranged from left to right
         #if not, sort it (flip last list to first, etc.) and reverse mean_list accordingly
         #first define coordinates of first and second "starting coordinates"
@@ -666,9 +651,14 @@ class MainPage(tk.Frame):
 
     def create_rectangle(self,x_one=None,x_two=None,y_one=None,y_two=None):
         
+        #the "try" statement will only work if the user-input angle is a float (and not a string)
+        #otherwise, angle will default to zero, meaning no rotation
         try:
             self.angle = float(self.angle_box.get())
-
+            if (self.angle/90)%2 == 0:      #if 0,180,360,etc., no different from 0 degree rotation (no rotation)
+                self.angle = 0
+            if (self.angle/90)%2 == 1:      #if 90, 270, etc., just approximate to be 89.9
+                self.angle = 89.9
         except:
             self.angle = 0
             self.angle_box.delete(0,tk.END)
@@ -803,15 +793,28 @@ class MainPage(tk.Frame):
         self.bpm = int(self.bpm_entry.get())
         self.program = int(self.program_entry.get())   #the instrument!
         self.duration = float(self.duration_entry.get())
+
+        
         try:
             self.angle = float(self.angle_box.get())
+            #if the angle angle is no different from 0 (e.g., 180, 360, etc.), just set the angle = 0.
+            if (self.angle/90)%2 == 0:
+                self.angle = 0
+            #if angle is 90, 270, etc., just approximate as 89.9 deg (avoids many problems -- including dividing by cos(90)=0 -- and 89.9 is sufficiently close to 90 degrees)
+            if (self.angle/90)%2 == 1:
+                self.angle = 89.9
         except:
             self.angle = 0
             self.angle_box.delete(0,tk.END)
             self.angle_box.insert(0,str(self.angle))
         
-        self.note_names = 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5-D6'   #D-major
+        selected_sig = self.keyvar.get()
+        self.note_names = self.note_dict[selected_sig]
         self.note_names = self.note_names.split("-")   #converts self.note_names into a proper list of note strings
+        
+        print(selected_sig)
+        print(self.note_names)
+        
         self.soundfont = '/opt/anaconda3/share/soundfonts/SM64SF_V2.sf2'
         
         #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
@@ -843,9 +846,9 @@ class MainPage(tk.Frame):
             self.ymax = int(self.im_length/2+(0.20*self.im_length))
             
         self.xminmax_entry.delete(0,tk.END)
-        self.xminmax_entry.insert(0,f'{self.xmin}, {self.xmax}')
-        self.yminmax_entry.delete(0,tk.END)
-        self.yminmax_entry.insert(0,f'{self.ymin}, {self.ymax}')
+        mean_px_min = '{:.2f}'.format(self.xmin)
+        mean_px_max = '{:.2f}'.format(self.xmax)
+        self.xminmax_entry.insert(0,f'{mean_px_min}, {mean_px_max}')
         
         if self.angle == 0:
             #band = self.dat[:,self.ymin:self.ymax]   #isolates pixels within horizontal band across the image from y_min to y_max
@@ -926,27 +929,7 @@ class MainPage(tk.Frame):
         
         #for the instance where there is no rotation
         if self.angle == 0:
-            
-            '''
-            #when "trimming" the midi file, the index of the notes does not necessarily correspond to the xclick event (e.g., initial note is 0 but the range is from xmin=30 to xmax=50, so if xclick=0 the note played will be for xmin=30). one solution is to "cushion" the midi notes with an array of zeros to artificially raise the index numbers. If xmin=0 and xmax=np.max(image), then there will be no such cushioning. The floor will be solid af.
-            cushion_left = np.zeros(int(self.xmin))
-            midi_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.midi_data]))
-            vel_edited = np.ndarray.tolist(np.concatenate([cushion_left,self.vel_data]))
 
-            #print('all midi data:',self.midi_data)
-            #print('midi edited data:',midi_edited)
-            #print('index:',int(self.x))
-        
-            #if out of bounds, then just play the last MIDI note
-            try:
-                single_pitch = int(midi_edited[int(self.x)])
-                single_volume = int(vel_edited[int(self.x)]) 
-                print('note played:',single_pitch)
-
-            except:
-                single_pitch = int(midi_edited[-1])
-                single_volume = int(vel_edited[-1]) 
-            '''
             self.find_closest_mean(self.mean_list_norot)  #determine the index at which the mean_list element    
                                                           #is closest to the current bar mean outputs 
                                                           #self.closest_mean_index
@@ -956,10 +939,6 @@ class MainPage(tk.Frame):
         #extract the midi and velocity notes associated with that index. 
         single_pitch = self.midi_data[self.closest_mean_index]
         single_volume = self.vel_data[self.closest_mean_index]
-            
-        #print('index:',self.closest_mean_index,'midi note:',single_pitch)
-        #print('mean_list',self.mean_list_norot)
-        #print('midi_notes',self.midi_data)
             
         midi_file.addNote(track=0, channel=0, pitch=single_pitch, time=self.t_data[1], duration=1, volume=single_volume)   #isolate the one note corresponding to the click event, add to midi file; the +1 is to account for the silly python notation conventions
         
@@ -980,7 +959,6 @@ if __name__ == "__main__":
     
     
     #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
-    #change midi note scales (D major, etc.)
     #I should also update the "Click for Info" instructions to reflect the square funtionalities
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #also also also...animations. maybe.
