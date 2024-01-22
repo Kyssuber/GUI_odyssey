@@ -1,0 +1,7 @@
+If sonification is to be done, uploaded must be a FITS file. 
+
+The "File Browser" widget is located at the top right of the GUI. You can either type the path to the galaxy FITS image, or you can click the "Browse" button. Doing so will open a browsing window, where you can select your desired FITS image and click "Open." The window should then close and the full path to your image will display in the widget's textbox. 
+
+When you are set with this step, click "Enter/Refresh" to the right of the "Browse" button. This has two functions, the first being that the main display canvas will draw your FITS image. The second is more of a failsafe -- if any glitches transpire while utilizing the rectangle or line drawing tools, then you may click this button in order to clear the canvas of your scribbles. 
+
+NOTE: Currently, the button is tailored for testing purposes, with the path being '/Users/k215c316/vf_html_w1/all_input_fits/' (i.e., an addresses specific to my local machine). Pending an input textfile that will populate the pathways with user-defined instructions, you can directly edit the source code -- search for the browseFiles function (around line 800 or so) and type accordingly. Alternatively, you can struggle with the error message. 

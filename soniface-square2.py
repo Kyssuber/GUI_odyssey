@@ -63,6 +63,43 @@ class App(tk.Tk):
             frame.rowconfigure(i, weight=1)
         
         self.show_frame(MainPage)  #a method to be defined below (see MainPage class)
+        self.create_menubar()      #FOR MAC USERS: WILL APPEAR ON THE *MAC MENUBAR*, NOT THE TK WINDOW.
+    
+    def create_menubar(self):
+        
+        self.menu = tk.Menu(self)
+
+        self.filemenu = tk.Menu(self.menu, tearoff=0)
+        self.filemenu.add_command(label='Load FITS file', command=self.popup_loadfits)
+        self.filemenu.add_command(label='Sonification Features', command=self.popup_sonifeat)
+        self.filemenu.add_command(label='Defining a Region', command=self.popup_rectline)
+        self.filemenu.add_command(label='Save .wav', command=self.popup_wav)
+        self.filemenu.add_command(label='Save .mp4', command=self.popup_mp4)
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label='Exit Program', command=self.quit)
+        self.menu.add_cascade(label='Help',menu=self.filemenu)
+        
+        self.config(menu=self.menu)
+    #IN PLACE OF THIS, CREATE MULTIPLE POPUP TEXTBOX FUNCTIONS THAT DESCRIBE EACH LABEL. THIS WILL SERVE AS THE 'WRITTEN TUTORIAL' OF THE GUI. Once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
+    def popup_loadfits(self):
+        self.textbox1 = open(homedir+'/github/GUI_odyssey/readme_files/loadfits.txt','r').read()
+        messagebox.showinfo('How to Load a FITS File',self.textbox1)
+    
+    def popup_sonifeat(self):
+        self.textbox2 = open(homedir+'/github/GUI_odyssey/readme_files/sonifeat.txt','r').read()
+        messagebox.showinfo('Sonification Features',self.textbox2)
+    
+    def popup_rectline(self):
+        self.textbox3 = open(homedir+'/github/GUI_odyssey/readme_files/rectline.txt').read()
+        messagebox.showinfo('Constraining Sonification Area',self.textbox3)
+    
+    def popup_wav(self):
+        self.textbox4 = open(homedir+'/github/GUI_odyssey/readme_files/howtowav.txt').read()
+        messagebox.showinfo('Save Sound as WAV File',self.textbox4)
+    
+    def popup_mp4(self):
+        self.textbox5 = open(homedir+'/github/GUI_odyssey/readme_files/howtomp4.txt').read()
+        messagebox.showinfo('Save Sound (with Animation!) as MP4 File',self.textbox5)
     
     def show_frame(self, cont):     #'cont' represents the controller, enables switching between frames/windows...I think.
         frame = self.frames[cont]
@@ -81,8 +118,8 @@ class MainPage(tk.Frame):
         self.y1=None
         self.y2=None
         self.angle=0
-        
-        #list for different key signatures
+                
+        #dictionary for different key signatures
         
         self.note_dict = {
            'C Major': 'C2-D2-E2-F2-G2-A2-B2-C3-D3-E3-F3-G3-A3-B3-C4-D4-E4-F4-G4-A4-B4-C5-D5-E5-F5-G5-A5-B5',
@@ -117,7 +154,7 @@ class MainPage(tk.Frame):
         #first frame...
         tk.Frame.__init__(self,parent)
         
-        #NOTE: columnconfigure and rowconfigure below enable minimization and maximization of window to also affect widget size
+        #NOTE: columnconfigure and rowconfigure below enable the minimization and maximization of window to also affect widget size
         
         #create display frame, which will hold the canvas and a few button widgets underneath.
         self.frame_display=tk.LabelFrame(self,text='Display',
@@ -229,8 +266,6 @@ class MainPage(tk.Frame):
         key_lab = tk.Label(self.frame_soni,text='Key Signature').grid(row=5,column=0)
         self.key_menu = tk.OptionMenu(self.frame_soni, self.keyvar, *self.keyvar_options)
         self.key_menu.config(bg='black',fg='black',font='Arial 15')
-        #self.key_menu = tk.OptionMenu(self.frame_soni, self.keyvar, self.keyvar_options, width=10, borderwidth=2,
-        #                        bg='black', fg='lime green', font='Arial 15')
         self.key_menu.grid(row=5,column=1,columnspan=1)
         
         program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=6,column=0)
@@ -272,8 +307,7 @@ class MainPage(tk.Frame):
         self.button_explore.grid(row=1,column=0)
         
     def add_enter_button(self):
-        self.path_button = tk.Button(self.frame_buttons, text='Enter', padx=20, pady=10, font=self.helv20, 
-                                     command=self.initiate_canvas)
+        self.path_button = tk.Button(self.frame_buttons, text='Enter/Refresh', padx=20, pady=10, font=self.helv20,command=self.initiate_canvas)
         self.path_button.grid(row=1,column=1)
     
     def add_midi_button(self):
@@ -770,7 +804,7 @@ class MainPage(tk.Frame):
     
     # Function for opening the file explorer window
     def browseFiles(self):
-        filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_mask/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
+        filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_w1/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
         self.path_to_im.delete(0,tk.END)
         self.path_to_im.insert(0,filename)        
     
@@ -959,6 +993,6 @@ if __name__ == "__main__":
     
     
     #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
-    #I should also update the "Click for Info" instructions to reflect the square funtionalities
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #also also also...animations. maybe.
+    #need a save .wav, save .mp4, exit; A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
