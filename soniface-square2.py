@@ -849,7 +849,7 @@ class MainPage(tk.Frame):
         print(selected_sig)
         print(self.note_names)
         
-        self.soundfont = '/opt/anaconda3/share/soundfonts/SM64SF_V2.sf2'
+        self.soundfont = homedir+'/Desktop/pkmngba.sf2'
         
         #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
         try:

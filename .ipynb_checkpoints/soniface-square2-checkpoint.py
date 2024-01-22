@@ -849,7 +849,7 @@ class MainPage(tk.Frame):
         print(selected_sig)
         print(self.note_names)
         
-        self.soundfont = '/opt/anaconda3/share/soundfonts/SM64SF_V2.sf2'
+        self.soundfont = homedir+'/Desktop/pkmngba.sf2'
         
         #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
         try:
@@ -993,7 +993,6 @@ if __name__ == "__main__":
     
     
     #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
-    #I should also update the "Click for Info" instructions to reflect the square funtionalities
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #also also also...animations. maybe.
     #need a save .wav, save .mp4, exit; A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
