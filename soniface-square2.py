@@ -3,6 +3,7 @@ Class layout adapted from
 https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
+from midi2audio import FluidSynth
 from midiutil import MIDIFile
 from audiolazy import str2midi
 from pygame import mixer                    #this library is what causes the loading delay methinks
@@ -118,6 +119,10 @@ class MainPage(tk.Frame):
         self.y1=None
         self.y2=None
         self.angle=0
+        
+        #initiate a counter to ensure that files do not overwrite one another for an individual galaxy
+        #note: NEEDED FOR THE SAVE WIDGET
+        self.namecounter=0
                 
         #dictionary for different key signatures
         
@@ -156,9 +161,15 @@ class MainPage(tk.Frame):
         
         #NOTE: columnconfigure and rowconfigure below enable the minimization and maximization of window to also affect widget size
         
+        #create frame for save widgets...y'know, to generate the .wav and HOPEFULLY the .mp4 (pending as of January 23, 2024. if the save .mp4 widget appears on the GUI, then my efforts bore fruits and I simply forgot to delete this comment)
+        self.frame_save=tk.LabelFrame(self,text='Save Files',padx=5,pady=5)
+        self.frame_save.grid(row=4,column=1,columnspan=5)
+        for i in range(self.rowspan):
+            self.frame_save.columnconfigure(i,weight=1)
+            self.frame_save.rowconfigure(i,weight=1)
+        
         #create display frame, which will hold the canvas and a few button widgets underneath.
-        self.frame_display=tk.LabelFrame(self,text='Display',
-                                         font='Vendana 15',padx=5,pady=5)
+        self.frame_display=tk.LabelFrame(self,text='Display',font='Vendana 15',padx=5,pady=5)
         self.frame_display.grid(row=0,column=0,rowspan=8)
         for i in range(self.rowspan):
             self.frame_display.columnconfigure(i, weight=1)
@@ -201,6 +212,7 @@ class MainPage(tk.Frame):
         self.add_info_button()
         self.populate_soni_widget()
         self.populate_box_widget()
+        self.populate_save_widget()
         self.init_display_size()
     
     def populate_box_widget(self):
@@ -226,7 +238,11 @@ class MainPage(tk.Frame):
         self.path_to_im.grid(row=0,column=0,columnspan=2)
         self.add_browse_button()
         self.add_enter_button()
-        
+    
+    def populate_save_widget(self):
+        self.add_save_button()
+        return
+    
     def populate_soni_widget(self):
         
         self.add_midi_button()
@@ -301,6 +317,11 @@ class MainPage(tk.Frame):
         self.info_button = tk.Button(self.frame_display, text='Click for Info', padx=15, pady=10, font='Ariel 20', command=self.popup)
         self.info_button.grid(row=8,column=1)
     
+    def add_save_button(self):
+        self.save_button = tk.Button(self.frame_save, text='Save as WAV', padx=15, pady=10, font='Ariel 20',
+                                     command=self.save_sound)
+        self.save_button.grid(row=0,column=0)
+    
     def add_browse_button(self):
         self.button_explore = tk.Button(self.frame_buttons ,text="Browse", padx=20, pady=10, font=self.helv20, 
                                         command=self.browseFiles)
@@ -349,7 +370,40 @@ class MainPage(tk.Frame):
         
         #automatically rotate when - is clicked
         self.create_rectangle()
+    
+    def save_sound(self):
         
+        #if self.memfile has been defined already, then save as .wav
+        #notes: -file will automatically go to 'saved_wavfiles' directory
+        #       -.wav will only save the most recent self.midi_file, meaning the user must click "Sonify" to 
+                 #sonify their rectangle/parameter tweaks so that they might be reflected in the .wav
+        
+        if hasattr(self, 'midi_file'):
+            
+            midi_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.mid'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_wavfile directory
+            
+            #write file
+            with open(midi_savename,"wb") as f:
+                self.midi_file.writeFile(f)
+            
+            wav_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.wav'   
+            
+            fs = FluidSynth(sound_font=self.soundfont, gain=3)   #gain governs the volume of wavefile. I needed to tweak the source code of midi2audio in order to have the gain argument --> I'll give instructions somewhere for how to do so...try the github wiki. :-)
+            
+            if os.path.isfile(wav_savename):    
+                self.namecounter+=1
+                wav_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter)+'.wav'                
+            else:
+                self.namecounter=0
+            
+            fs.midi_to_audio(midi_savename, wav_savename) 
+            print('Done! Check the saved_wavfile directory.')
+            
+        #if user has not yet clicked "Sonify", then clicking button will activate a popup message
+        else:
+            self.textbox = 'Do not try to save an empty .wav file! Create a rectangle on the image canvas then click "Sonify" to generate MIDI notes.'
+            self.popup()
+    
     def initiate_canvas(self):
         
         #delete any and all miscellany (galaxy image, squares, lines) from the canvas (created using 
@@ -414,7 +468,10 @@ class MainPage(tk.Frame):
         #add canvas 'frame'
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
-            
+        
+        self.galaxy_name = galaxy_name   #will need for saving .wav file...
+        self.band = band                 #same rationale
+        
     def change_canvas_event(self):
         
         if int(self.var.get())==0:
@@ -952,6 +1009,8 @@ class MainPage(tk.Frame):
         mixer.music.load(self.memfile)
         mixer.music.play()
         
+        self.midi_file = midi_file   #will need for saving as .wav file
+        
     def midi_singlenote(self,event):
         #the setup for playing *just* one note...using the bar technique. :-)
         self.memfile = BytesIO()   #create working memory file (allows me to play the note without saving the file...yay!)
@@ -984,7 +1043,6 @@ class MainPage(tk.Frame):
         self.memfile.seek(0)   #for whatever reason, have to manually 'rewind' the track in order for mixer to play
         mixer.music.load(self.memfile)
         mixer.music.play()       
-        
         
 if __name__ == "__main__":
     app = App()
