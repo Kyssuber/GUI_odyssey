@@ -1,0 +1,5 @@
+If you have not yet converted galaxy data to sound by clicking the "Sonify" widget, please refer to rectline.txt and sonifeat.txt for instructions. Otherwise, the following ought to be relatively uninvolved... 
+\n 
+In fact, you need only press a button! 
+\n
+What that button does, though, requires a brief discussion. 

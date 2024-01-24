@@ -11,7 +11,7 @@ If you have found a rectangle enclosing the desired object to sonify, you can pr
 \n
 Then, if you are all set, navigate to the "Parameters" widget and click "Sonify." If all python libraries are correctly installed with the correct versions, you should automatically begin to hear the .wav file begin to play. The default direction of the pixel strips is from left to right, so the notes played will also go from the left of the galaxy to the right. 
 \n
-Suppose you'd like to listen to a single note corresponding to a single line of pixels within this rectangle. If you check the box located above the "Parameters" widget and click within the rectangle you drew on the canvas, you will plot a single line and hear its corresponding MIDI note. 
+Suppose you'd like to listen to a single note corresponding to a single line of pixels within this rectangle. If you check the box located below the galaxy display and then left-click within the rectangle you drew on the canvas, you will plot a single line and hear its corresponding MIDI note. Note that you MUST have clicked the "Sonify" button first in order to both create and listen to the lines.
 \n
 If you would like to change a certain parameter but not the rectangle, you need only to insert the desired parameter value in the companion textbox and click "Sonify" again. 
 \n

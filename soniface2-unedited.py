@@ -170,7 +170,7 @@ class MainPage(tk.Frame):
         
         #create display frame, which will hold the canvas and a few button widgets underneath.
         self.frame_display=tk.LabelFrame(self,text='Display',font='Vendana 15',padx=5,pady=5)
-        self.frame_display.grid(row=0,column=0,rowspan=8)
+        self.frame_display.grid(row=0,column=0,rowspan=9)
         for i in range(self.rowspan):
             self.frame_display.columnconfigure(i, weight=1)
             self.frame_display.rowconfigure(i, weight=1)
@@ -190,12 +190,14 @@ class MainPage(tk.Frame):
             self.frame_soni.columnconfigure(i, weight=1)
             self.frame_soni.rowconfigure(i, weight=1)
         
+        '''
         #create value frame, which holds the event labels for the mean pixel value.
         self.frame_value=tk.LabelFrame(self,padx=5,pady=5)
         self.frame_value.grid(row=4,column=2,sticky='se')
         for i in range(self.rowspan):
             self.frame_value.columnconfigure(i, weight=1)
             self.frame_value.rowconfigure(i, weight=1)
+        '''
         
         #create box frame --> check boxes for lines vs. squares when interacting with the figure canvas
         self.frame_box = tk.LabelFrame(self,text='Change Rectangle Angle',padx=5,pady=5)
@@ -209,7 +211,7 @@ class MainPage(tk.Frame):
         INSERT INITIATION FUNCTIONS TO RUN HERE.
         '''
         self.initiate_vals()
-        self.add_info_button()
+        #self.add_info_button()
         self.populate_soni_widget()
         self.populate_box_widget()
         self.populate_save_widget()
@@ -218,18 +220,24 @@ class MainPage(tk.Frame):
     def populate_box_widget(self):
         self.angle_box = tk.Entry(self.frame_box, width=15, borderwidth=2, bg='black', fg='lime green',
                                   font='Arial 20')
-        self.angle_box.insert(0,'angle (0-360)')
+        self.angle_box.insert(0,'Rotation angle (deg)')
         self.angle_box.grid(row=0,column=0,columnspan=5)
         self.add_angle_buttons()
     
     def initiate_vals(self):
         self.var = tk.IntVar()
-        self.val = tk.Label(self.frame_value,text='Pixel Value: ',font='Arial 18')
-        self.val.grid(row=1,column=0)
-        self.line_check = tk.Checkbutton(self.frame_value,text='Switch to Lines',
+        #self.val = tk.Label(self.frame_value,text='Mean Pixel Value: ',font='Arial 18')
+        #self.val.grid(row=1,column=0)
+        #self.line_check = tk.Checkbutton(self.frame_value,text='Switch to Lines',
+        #                                 onvalue=1,offvalue=0,command=self.change_canvas_event,
+        #                                 variable=self.var,font='Arial 15')
+        #self.line_check.grid(row=0,column=0)
+        self.val = tk.Label(self.frame_display,text='Mean Pixel Value: ',font='Arial 18')
+        self.val.grid(row=8,column=2,padx=1,pady=(3,1),sticky='e')
+        self.line_check = tk.Checkbutton(self.frame_display,text='Switch to Lines',
                                          onvalue=1,offvalue=0,command=self.change_canvas_event,
-                                         variable=self.var,font='Arial 15')
-        self.line_check.grid(row=0,column=0)
+                                         variable=self.var,font='Arial 18')
+        self.line_check.grid(row=9,column=2,padx=1,pady=(3,1),sticky='e')
     
     def galaxy_to_display(self):
         self.path_to_im = tk.Entry(self.frame_buttons, width=35, borderwidth=2, bg='black', fg='lime green', 
@@ -553,7 +561,7 @@ class MainPage(tk.Frame):
                     px_value = self.dat[int(y_coord)][int(self.x)]   #x will be the same...again, by design.
                     value_list[index] = px_value
                 mean_px = '{:.2f}'.format(np.mean(value_list))
-                self.val.config(text=f'Mean Pixel Value: {mean_px}',font='Ariel 16')
+                self.val.config(text=f'Mean Pixel Value: {mean_px}',font='Ariel 18')
                 self.canvas.draw()      
             
             else:
@@ -1052,5 +1060,6 @@ if __name__ == "__main__":
     
     #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
     #I should ALSO record a video tutorial on how to operate this doohickey.
-    #also also also...animations. maybe.
-    #need a save .wav, save .mp4, exit; A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
+    #also also also...animations. maybe. with save.mp4 option.
+    #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
+    #and for pete's sake, TIDY YOUR FRAMES.
