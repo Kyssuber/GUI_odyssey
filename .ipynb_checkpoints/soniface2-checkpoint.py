@@ -83,7 +83,7 @@ class App(tk.Tk):
         self.config(menu=self.menu)
     #IN PLACE OF THIS, CREATE MULTIPLE POPUP TEXTBOX FUNCTIONS THAT DESCRIBE EACH LABEL. THIS WILL SERVE AS THE 'WRITTEN TUTORIAL' OF THE GUI. Once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
     def popup_loadfits(self):
-        self.textbox1 = open(homedir+'/github/GUI_odyssey/readme_files/loadfits.txt','r').read()
+        self.textbox1 = open(homedir+'/github/GUI_odyssey/readme_files/loadfits.txt','r').reaed()
         messagebox.showinfo('How to Load a FITS File',self.textbox1)
     
     def popup_sonifeat(self):
@@ -190,15 +190,6 @@ class MainPage(tk.Frame):
             self.frame_soni.columnconfigure(i, weight=1)
             self.frame_soni.rowconfigure(i, weight=1)
         
-        '''
-        #create value frame, which holds the event labels for the mean pixel value.
-        self.frame_value=tk.LabelFrame(self,padx=5,pady=5)
-        self.frame_value.grid(row=4,column=2,sticky='se')
-        for i in range(self.rowspan):
-            self.frame_value.columnconfigure(i, weight=1)
-            self.frame_value.rowconfigure(i, weight=1)
-        '''
-        
         #create box frame --> check boxes for lines vs. squares when interacting with the figure canvas
         self.frame_box = tk.LabelFrame(self,text='Change Rectangle Angle',padx=5,pady=5)
         self.frame_box.grid(row=8,column=1,sticky='s')
@@ -226,12 +217,6 @@ class MainPage(tk.Frame):
     
     def initiate_vals(self):
         self.var = tk.IntVar()
-        #self.val = tk.Label(self.frame_value,text='Mean Pixel Value: ',font='Arial 18')
-        #self.val.grid(row=1,column=0)
-        #self.line_check = tk.Checkbutton(self.frame_value,text='Switch to Lines',
-        #                                 onvalue=1,offvalue=0,command=self.change_canvas_event,
-        #                                 variable=self.var,font='Arial 15')
-        #self.line_check.grid(row=0,column=0)
         self.val = tk.Label(self.frame_display,text='Mean Pixel Value: ',font='Arial 18')
         self.val.grid(row=8,column=2,padx=1,pady=(3,1),sticky='e')
         self.line_check = tk.Checkbutton(self.frame_display,text='Switch to Lines',
@@ -324,7 +309,7 @@ class MainPage(tk.Frame):
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6,sticky='nsew')
     
     def add_info_button(self):
-        self.info_button = tk.Button(self.frame_display, text='Galaxy FITS Info', padx=15, pady=10, font='Ariel 20', command=self.popup)
+        self.info_button = tk.Button(self.frame_display, text='Galaxy FITS Info', padx=15, pady=10, font='Ariel 20', command=self.popup_info)
         self.info_button.grid(row=8,column=0,sticky='w',rowspan=2)
     
     def add_save_button(self):
@@ -407,6 +392,16 @@ class MainPage(tk.Frame):
                 self.namecounter=0
             
             fs.midi_to_audio(midi_savename, wav_savename) 
+            
+            #write textfile with galaxy, parameter information here!
+            
+            
+            #when finished downloading, there will be a ding sound indicating completion. 
+            path = os.getcwd()+'/success.mp3'
+            mixer.init()
+            mixer.music.set_volume(0.25)
+            mixer.music.load(path)
+            mixer.music.play()
             print('Done! Check the saved_wavfile directory.')
             
         #if user has not yet clicked "Sonify", then clicking button will activate a popup message
@@ -430,11 +425,13 @@ class MainPage(tk.Frame):
         split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
         galaxyname = split_filename[0]
         galaxyband = split_filename[3]
+
         try:
-            if str(galaxyband)=='r':
-                mask_path = glob.glob('/Users/k215c316/vf_html_mask/all_input_fits/'+galaxyname+'*'+'r-mask.fits')[0]
-            if galaxyband=='W3':
-                mask_path = glob.glob('/Users/k215c316/vf_html_mask/all_input_fits/'+galaxyname+'*'+'wise-mask.fits')[0]
+            if (galaxyband=='r'):
+                mask_path = glob.glob(homedir+'/vf_html_w1/all_input_fits/'+galaxyname+'*'+'r-mask.fits')[0]
+            if (galaxyband=='W3') | (galaxyband=='W1'):
+                mask_path = glob.glob(homedir+'/vf_html_w1/all_input_fits/'+galaxyname+'*'+'wise-mask.fits')[0]
+                
             mask_image = fits.getdata(mask_path)
             self.mask_bool = ~(mask_image>0)
         
@@ -499,6 +496,28 @@ class MainPage(tk.Frame):
     #create command function to print info popup message
     def popup(self):
         messagebox.showinfo('Unconventional README.md',self.textbox)
+    
+    #how silly that I must create a separate popup function for FITS information. sigh.
+    def popup_info(self):
+        
+        try:
+            hdu1 = fits.open(str(self.path_to_im.get()))
+            self.textbox_info = hdu1[0].header
+            hdu1.close()
+        except:
+            self.textbox_info = 'No header information available.'
+        
+        popup = tk.Toplevel()     #creates a window on top of the parent frame
+        
+        vscroll = tk.Scrollbar(popup, orient=tk.VERTICAL)   #generates vertical scrollbar
+        vscroll.pack(side=tk.RIGHT, fill=tk.Y)   #PACKS scrollbar -- because this is a new window, we are not bound to using the grid
+
+        text = tk.Text(popup, wrap=None, yscrollcommand=vscroll.set)   #initiate textbox in window; adds vertical and horizontal scrollbars; wrap=None prevents lines from being cut off
+        text.pack(expand=True, fill=tk.BOTH)
+        
+        vscroll.config(command=text.yview)   #not entirely sure what this entails
+        
+        text.insert(tk.END, self.textbox_info)
     
     #it may not be the most efficient function, as it calculates the distances between every line coordinate and the given (x,y); however, I am not clever enough to conjure up an alternative solution presently.
     def find_closest_bar(self):
@@ -1055,13 +1074,23 @@ class MainPage(tk.Frame):
         mixer.music.play()       
         
 if __name__ == "__main__":
+    
+    #parameter.txt file unpacking here
+    
+    
+    
+    
+    
+    
+    
+    
+    
     app = App()
     app.mainloop()
     #app.destroy()    
     
     
-    #create save button which saves most recent sonification file as well as a companion text file listing the galaxy VFID and parameter values.
+    #companion text file listing the galaxy VFID and parameter values.
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #also also also...animations. maybe. with save.mp4 option.
     #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
-    #and for pete's sake, TIDY YOUR FRAMES.
