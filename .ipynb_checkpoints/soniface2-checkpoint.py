@@ -3,6 +3,7 @@ Class layout adapted from
 https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
+import ffmpeg
 from midi2audio import FluidSynth
 from midiutil import MIDIFile
 from audiolazy import str2midi
@@ -12,9 +13,10 @@ import tkinter as tk
 import numpy as np
 import os
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.animation as animation
 
-#from matplotlib import pyplot as plt      #don't use, since closing GUI doesn't close pyplot!
-                                           #this does add a bit more clunkiness to the code, however.
+#from matplotlib import pyplot as plt      #don't use with canvas, since closing GUI doesn't close pyplot!
+                                           #the workaround does add a bit more clunkiness to the code...
                                            #I did not create the rules. do not sue me.
 
 from matplotlib import figure              #see self.fig, self.ax.
@@ -34,8 +36,11 @@ import glob
 
 import sys
 from io import BytesIO
+from mido import MidiFile
 
 homedir = os.getenv('HOME')
+
+matplotlib.rcParams['animation.ffmpeg_path'] = homedir+'/Downloads/ffmpeg'   #need for generating animations...
 
 #create main window container, into which the first page will be placed.
 class App(tk.Tk):
@@ -81,7 +86,8 @@ class App(tk.Tk):
         self.menu.add_cascade(label='Help',menu=self.filemenu)
         
         self.config(menu=self.menu)
-    #IN PLACE OF THIS, CREATE MULTIPLE POPUP TEXTBOX FUNCTIONS THAT DESCRIBE EACH LABEL. THIS WILL SERVE AS THE 'WRITTEN TUTORIAL' OF THE GUI. Once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
+    
+    #once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
     def popup_loadfits(self):
         self.textbox1 = open(homedir+'/github/GUI_odyssey/readme_files/loadfits.txt','r').reaed()
         messagebox.showinfo('How to Load a FITS File',self.textbox1)
@@ -123,6 +129,8 @@ class MainPage(tk.Frame):
         #initiate a counter to ensure that files do not overwrite one another for an individual galaxy
         #note: NEEDED FOR THE SAVE WIDGET
         self.namecounter=0
+        self.namecounter_ani=0
+        self.namecounter_ani_both=0
                 
         #dictionary for different key signatures
         
@@ -153,8 +161,6 @@ class MainPage(tk.Frame):
         
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
-        
-        self.textbox="In progress."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -199,7 +205,7 @@ class MainPage(tk.Frame):
         
         self.galaxy_to_display()
         '''
-        INSERT INITIATION FUNCTIONS TO RUN HERE.
+        INSERT INITIATION FUNCTIONS TO RUN BELOW.
         '''
         self.initiate_vals()
         self.add_info_button()
@@ -234,6 +240,7 @@ class MainPage(tk.Frame):
     
     def populate_save_widget(self):
         self.add_save_button()
+        self.add_saveani_button()
         return
     
     def populate_soni_widget(self):
@@ -317,6 +324,11 @@ class MainPage(tk.Frame):
                                      command=self.save_sound)
         self.save_button.grid(row=0,column=0)
     
+    def add_saveani_button(self):
+        self.saveani_button = tk.Button(self.frame_save, text='Save as MP4', padx=15, pady=10, font='Ariel 20',
+                                        command=self.create_midi_animation)
+        self.saveani_button.grid(row=0,column=1)
+    
     def add_browse_button(self):
         self.button_explore = tk.Button(self.frame_buttons ,text="Browse", padx=20, pady=10, font=self.helv20, 
                                         command=self.browseFiles)
@@ -393,22 +405,17 @@ class MainPage(tk.Frame):
             
             fs.midi_to_audio(midi_savename, wav_savename) 
             
-            #write textfile with galaxy, parameter information here!
+            self.download_success()   #play the jingle
             
+            self.time = self.get_midi_length(wav_savename)   #length of soundfile
             
-            #when finished downloading, there will be a ding sound indicating completion. 
-            path = os.getcwd()+'/success.mp3'
-            mixer.init()
-            mixer.music.set_volume(0.25)
-            mixer.music.load(path)
-            mixer.music.play()
-            print('Done! Check the saved_wavfile directory.')
+            self.wav_savename = wav_savename   #need for creating .mp4
             
         #if user has not yet clicked "Sonify", then clicking button will activate a popup message
         else:
             self.textbox = 'Do not try to save an empty .wav file! Create a rectangle on the image canvas then click "Sonify" to generate MIDI notes.'
             self.popup()
-    
+        
     def initiate_canvas(self):
         
         #delete any and all miscellany (galaxy image, squares, lines) from the canvas (created using 
@@ -444,7 +451,6 @@ class MainPage(tk.Frame):
         norm_im = simple_norm(self.dat*self.mask_bool,'asinh', min_percent=0.5, max_percent=99.9,
                               min_cut=v1, max_cut=v2)  #'beautify' the image
         
-        #self.fig = figure.Figure(figsize=(5,5))
         self.ax = self.fig.add_subplot()
         self.im = self.ax.imshow(self.dat,origin='lower',norm=norm_im)
         self.ax.set_xlim(0,len(self.dat)-1)
@@ -907,7 +913,7 @@ class MainPage(tk.Frame):
         
         #define various quantities required for midi file generation
         self.y_scale = float(self.y_scale_entry.get())
-        self.strips_per_beat = 15
+        self.strips_per_beat = 10
         self.vel_min = int(self.vel_min_entry.get())
         self.vel_max = int(self.vel_max_entry.get())
         self.bpm = int(self.bpm_entry.get())
@@ -1018,7 +1024,7 @@ class MainPage(tk.Frame):
             self.vel_data.append(note_velocity)
         
         self.midi_allnotes() 
-        
+                
     def midi_allnotes(self):
         
         self.create_rectangle()
@@ -1061,7 +1067,7 @@ class MainPage(tk.Frame):
         #extract the midi and velocity notes associated with that index. 
         single_pitch = self.midi_data[self.closest_mean_index]
         single_volume = self.vel_data[self.closest_mean_index]
-            
+        
         midi_file.addNote(track=0, channel=0, pitch=single_pitch, time=self.t_data[1], duration=1, volume=single_volume)   #isolate the one note corresponding to the click event, add to midi file; the +1 is to account for the silly python notation conventions
         
         midi_file.writeFile(self.memfile)
@@ -1072,6 +1078,88 @@ class MainPage(tk.Frame):
         self.memfile.seek(0)   #for whatever reason, have to manually 'rewind' the track in order for mixer to play
         mixer.music.load(self.memfile)
         mixer.music.play()       
+    
+    ###ANIMATION FUNCTIONS###
+    
+    def get_midi_length(self,file):
+        wav_length = mixer.Sound(file).get_length() - 3   #there seems to be ~3 seconds of silence at the end of each file, so the "-3" trims this lardy bit. 
+        print(f'File Length (seconds): {mixer.Sound(file).get_length()}')
+        return wav_length
+    
+    def create_midi_animation(self):
+        
+        self.save_sound()
+        
+        ani_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'.mp4'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_mp4files directory
+            
+        if os.path.isfile(ani_savename):    
+            self.namecounter_ani+=1
+            ani_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter_ani)+'.mp4'                
+        else:
+            self.namecounter_ani=0
+        
+        #fig=plt.figure()
+        fig = figure.Figure() 
+        
+        #plt.scatter(self.t_data, self.midi_data, self.vel_data, alpha=0.5, edgecolors='black')
+        ax = fig.add_subplot()
+        ax.scatter(self.t_data, self.midi_data, self.vel_data, alpha=0.5, edgecolors='black')
+        
+        ax.set_xlabel('Time interval (s)', fontsize=12)
+        ax.set_ylabel('MIDI note', fontsize=12)
+        #plt.xlabel('Time interval (s)', fontsize=12)
+        #plt.ylabel('MIDI note', fontsize=12)
+
+        xmin = 0
+        xmax = np.max(self.t_data)
+        ymin = int(np.min(self.midi_data))
+        ymax = int(np.max(self.midi_data))
+
+        xvals = np.arange(0, xmax+1, 0.05)   #possible x-values for each pixel line, increments of 0.05 (which are close enough that the bar appears to move continuously)
+
+        def update_line(num, line):
+            i = xvals[num]
+            line.set_data([i, i], [ymin-5, ymax+5])
+            return line,
+
+        #line, = plt.plot([], [], lw=2)
+        line, = ax.plot([], [], lw=2)
+        
+        #l,v = plt.plot(xmin, ymin, xmax, ymax, lw=2, color='red')
+        l,v = ax.plot(xmin, ymin, xmax, ymax, lw=2, color='red')
+        
+        line_anim = animation.FuncAnimation(fig, update_line, frames=len(xvals), fargs=(l,),blit=True)
+
+        FFWriter = animation.FFMpegWriter()
+        line_anim.save(ani_savename,fps=len(xvals)/self.time)      
+        
+        del fig     #I am finished with the figure, so I shall delete references to the figure.
+        
+        ani_both_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat.mp4'
+        
+        if os.path.isfile(ani_both_savename):    
+            self.namecounter_ani_both+=1
+            ani_both_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat-'+str(self.namecounter_ani_both)+'.mp4'                
+        else:
+            self.namecounter_ani_both=0
+        
+        input_video = ffmpeg.input(ani_savename)
+        input_audio = ffmpeg.input(self.wav_savename)
+        
+        ffmpeg.concat(input_video, input_audio, v=1, a=1).output(ani_both_savename).run(capture_stdout=True, capture_stderr=True)
+            
+        self.download_success()
+        
+        self.textbox = 'Done! Check the saved_mp4file directory for the final product.'
+        self.popup()
+    
+    #when file(s) are finished downloading, there will be a ding sound indicating completion. it's fun.
+    def download_success(self):
+        path = os.getcwd()+'/success.mp3'
+        mixer.init()
+        mixer.music.set_volume(0.25)
+        mixer.music.load(path)
+        mixer.music.play()
         
 if __name__ == "__main__":
     
@@ -1090,7 +1178,6 @@ if __name__ == "__main__":
     #app.destroy()    
     
     
-    #companion text file listing the galaxy VFID and parameter values.
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #also also also...animations. maybe. with save.mp4 option.
     #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.

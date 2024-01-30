@@ -1,0 +1,3 @@
+NEED:
+--path to ffmpeg (matplotlib.rcParams line)
+--

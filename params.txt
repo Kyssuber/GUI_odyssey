@@ -1,0 +1,4 @@
+NEED:
+--path to ffmpeg (matplotlib.rcParams line)
+--GUI window geometry! (default is 980x600 to accommodate my monitor)
+--
