@@ -136,18 +136,18 @@ class MainPage(tk.Frame):
         
         self.note_dict = {
            'C Major': 'C2-D2-E2-F2-G2-A2-B2-C3-D3-E3-F3-G3-A3-B3-C4-D4-E4-F4-G4-A4-B4-C5-D5-E5-F5-G5-A5-B5',
-           'G Major': 'G2-A2-B2-C2-D2-E2-F#2-G3-A3-B3-C3-D3-E3-F#3-G4-A4-B4-C4-D4-E4-F#4-G5-A5-B5-C5-D5-E5-F#5',
-           'D Major': 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5',
-           'A Major': 'A2-B2-C#2-D2-E2-F#2-G#2-A3-B3-C#3-D3-E3-F#3-G#3-A4-B4-C#4-D4-E4-F#4-G#4-A5-B5-C#5-D5-E5-F#5-G#5',
-           'E Major': 'E2-F#2-G#2-A2-B2-C#2-D#2-E3-F#3-G#3-A3-B3-C#3-D#3-E4-F#4-G#4-A4-B4-C#4-D#4-E5-F#5-G#5-A5-B5-C#5-D#5',
-           'B Major': 'B2-C#2-D#2-E2-F#2-G#2-A#2-B3-C#3-D#3-E3-F#3-G#3-A#3-B4-C#4-D#4-E4-F#4-G#4-A#4-B5-C#5-D#5-E5-F#5-G#5-A#5',
-           'F# Major': 'F#2-G#2-A#2-B2-C#2-D#2-E#2-F#3-G#3-A#3-B3-C#3-D#3-E#3-F#4-G#4-A#4-B4-C#4-D#4-E#4-F#5-G#5-A#5-B5-C#5-D#5-E#5', 
-           'Gb Major': 'Gb2-Ab2-Bb2-Cb2-Db2-Eb2-F2-Gb3-Ab3-Bb3-Cb3-Db3-Eb3-F3-Gb4-Ab4-Bb4-Cb4-Db4-Eb4-F4-Gb5-Ab5-Bb5-Cb5-Db5-Eb5-F5',
-           'Db Major': 'Db2-Eb2-F2-Gb2-Ab2-Bb2-C2-Db3-Eb3-F3-Gb3-Ab3-Bb3-C3-Db4-Eb4-F4-Gb4-Ab4-Bb4-C4-Db5-Eb5-F5-Gb5-Ab5-Bb5-C5',
-           'Ab Major': 'Ab2-Bb2-C2-Db2-Eb2-F2-G2-Ab3-Bb3-C3-Db3-Eb3-F3-G3-Ab4-Bb4-C4-Db4-Eb4-F4-G4-Ab5-Bb5-C5-Db5-Eb5-F5-G5', 
-           'Eb Major': 'Eb2-F2-G2-Ab2-Bb2-C2-D2-Eb3-F3-G3-Ab3-Bb3-C3-D3-Eb4-F4-G4-Ab4-Bb4-C4-D4-Eb5-F5-G5-Ab5-Bb5-C5-D5',
-           'Bb Major': 'Bb2-C2-D2-Eb2-F2-G2-A2-Bb3-C3-D3-Eb3-F3-G3-A3-Bb4-C4-D4-Eb4-F4-G4-A4-Bb5-C5-D5-Eb5-F5-G5-A5',
-           'F Major': 'F2-G2-A2-Bb2-C2-D2-E2-F3-G3-A3-Bb3-C3-D3-E3-F4-G4-A4-Bb4-C4-D4-E4-F5-G5-A5-Bb5-C5-D5-E5', 
+           'G Major': 'G1-A1-B1-C2-D2-E2-F#2-G2-A2-B2-C3-D3-E3-F#3-G3-A3-B3-C4-D4-E4-F#4-G4-A4-B4-C5-D5-E5-F#5',
+           'D Major': 'D2-E2-F#2-G2-A2-B2-C#3-D3-E3-F#3-G3-A3-B3-C#4-D4-E4-F#4-G4-A4-B4-C#5-D5-E5-F#5-G5-A5-B5-C#6',
+           'A Major': 'A1-B1-C#2-D2-E2-F#2-G#2-A2-B2-C#3-D3-E3-F#3-G#3-A3-B3-C#4-D4-E4-F#4-G#4-A4-B4-C#5-D5-E5-F#5-G#5',
+           'E Major': 'E2-F#2-G#2-A2-B2-C#3-D#3-E3-F#3-G#3-A3-B3-C#4-D#4-E4-F#4-G#4-A4-B4-C#5-D#5-E5-F#5-G#5-A5-B5-C#6-D#6',
+           'B Major': 'B1-C#2-D#2-E2-F#2-G#2-A#2-B3-C#3-D#3-E3-F#3-G#3-A#3-B4-C#4-D#4-E4-F#4-G#4-A#4-B5-C#5-D#5-E5-F#5-G#5-A#5',
+           'F# Major': 'F#2-G#2-A#2-B2-C#3-D#3-E#3-F#3-G#3-A#3-B3-C#4-D#4-E#4-F#4-G#4-A#4-B4-C#5-D#5-E#5-F#5-G#5-A#5-B5-C#6-D#6-E#6', 
+           'Gb Major': 'Gb1-Ab1-Bb1-Cb2-Db2-Eb2-F2-Gb2-Ab2-Bb2-Cb3-Db3-Eb3-F3-Gb3-Ab3-Bb3-Cb4-Db4-Eb4-F4-Gb4-Ab4-Bb4-Cb5-Db5-Eb5-F5',
+           'Db Major': 'Db2-Eb2-F2-Gb2-Ab2-Bb2-C3-Db3-Eb3-F3-Gb3-Ab3-Bb3-C4-Db4-Eb4-F4-Gb4-Ab4-Bb4-C5-Db5-Eb5-F5-Gb5-Ab5-Bb5-C6',
+           'Ab Major': 'Ab1-Bb1-C2-Db2-Eb2-F2-G2-Ab2-Bb2-C3-Db3-Eb3-F3-G3-Ab3-Bb3-C4-Db4-Eb4-F4-G4-Ab4-Bb4-C5-Db5-Eb5-F5-G5', 
+           'Eb Major': 'Eb2-F2-G2-Ab2-Bb2-C3-D3-Eb3-F3-G3-Ab3-Bb3-C4-D4-Eb4-F4-G4-Ab4-Bb4-C5-D5-Eb5-F5-G5-Ab5-Bb5-C6-D6',
+           'Bb Major': 'Bb1-C2-D2-Eb2-F2-G2-A2-Bb2-C3-D3-Eb3-F3-G3-A3-Bb3-C4-D4-Eb4-F4-G4-A4-Bb4-C5-D5-Eb5-F5-G5-A5',
+           'F Major': 'F2-G2-A2-Bb2-C3-D3-E3-F3-G3-A3-Bb3-C4-D4-E4-F4-G4-A4-Bb4-C5-D5-E5-F5-G5-A5-Bb5-C6-D6-E6', 
         }
         
         #isolate the key signature names --> need for the dropdown menu
@@ -986,10 +986,6 @@ class MainPage(tk.Frame):
             for line in vertical_lines:
                 mean_strip_values.append(np.mean(line))
             
-            #for i in range(self.xmin,self.xmax):
-            #    strips.append(band[i,:])   #individual vertical strips
-            #    mean_strip_values[i-self.xmin] = np.mean(strips[i-self.xmin])   #the 'ydata'; i-self.xmin for correct indices (will go from 0 to self.xmax-self.xmin)
-            
             self.mean_list_norot = mean_strip_values
         
         if self.angle != 0:
@@ -998,9 +994,6 @@ class MainPage(tk.Frame):
     
         #rescale strip number to beats
         self.t_data = np.arange(0,len(mean_strip_values),1) / self.strips_per_beat   #convert to 'time' steps
-        duration_beats=np.max(self.t_data)   #duration is end of the t_data list, or the max value in this list
-        #print('Duration:',duration_beats, 'beats')
-        #one beat = one quarter note
         
         y_data = self.map_value(mean_strip_values,min(mean_strip_values),max(mean_strip_values),0,1)   #normalizes values
         y_data_scaled = y_data**self.y_scale
@@ -1008,13 +1001,16 @@ class MainPage(tk.Frame):
         #the following converts note names into midi notes
         note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
         n_notes = len(note_midis)
-        #print('Resolution:',n_notes,'notes')
+        
+        print(note_midis)
+        print('unscaled:',y_data)
+        print('scaled:',y_data_scaled)
                                                             
         #MAPPING DATA TO THE MIDI NOTES!        
         self.midi_data = []
         #for every data point, map y_data_scaled values such that smallest/largest px is lowest/highest note
         for i in range(len(self.t_data)):   #assigns midi note number to whichever y_data_scaled[i] is nearest
-            note_index = round(self.map_value(y_data_scaled[i],0,1,0,len(note_midis)-1))
+            note_index = round(self.map_value(y_data_scaled[i],0,1,0,n_notes-1))
             self.midi_data.append(note_midis[note_index])
 
         #map data to note velocities (equivalent to the sound volume)
@@ -1023,8 +1019,11 @@ class MainPage(tk.Frame):
             note_velocity = round(self.map_value(y_data_scaled[i],0,1,self.vel_min,self.vel_max)) #larger values, heavier sound
             self.vel_data.append(note_velocity)
         
+        print('velocity:',self.vel_data)
+        
         self.midi_allnotes() 
-                
+        print('mean values:',self.mean_list_norot)
+        print('midi notes:',self.midi_data)
     def midi_allnotes(self):
         
         self.create_rectangle()
@@ -1098,17 +1097,13 @@ class MainPage(tk.Frame):
         else:
             self.namecounter_ani=0
         
-        #fig=plt.figure()
         fig = figure.Figure() 
         
-        #plt.scatter(self.t_data, self.midi_data, self.vel_data, alpha=0.5, edgecolors='black')
         ax = fig.add_subplot()
         ax.scatter(self.t_data, self.midi_data, self.vel_data, alpha=0.5, edgecolors='black')
         
         ax.set_xlabel('Time interval (s)', fontsize=12)
         ax.set_ylabel('MIDI note', fontsize=12)
-        #plt.xlabel('Time interval (s)', fontsize=12)
-        #plt.ylabel('MIDI note', fontsize=12)
 
         xmin = 0
         xmax = np.max(self.t_data)
@@ -1122,10 +1117,8 @@ class MainPage(tk.Frame):
             line.set_data([i, i], [ymin-5, ymax+5])
             return line,
 
-        #line, = plt.plot([], [], lw=2)
         line, = ax.plot([], [], lw=2)
         
-        #l,v = plt.plot(xmin, ymin, xmax, ymax, lw=2, color='red')
         l,v = ax.plot(xmin, ymin, xmax, ymax, lw=2, color='red')
         
         line_anim = animation.FuncAnimation(fig, update_line, frames=len(xvals), fargs=(l,),blit=True)
@@ -1179,5 +1172,5 @@ if __name__ == "__main__":
     
     
     #I should ALSO record a video tutorial on how to operate this doohickey.
-    #also also also...animations. maybe. with save.mp4 option.
+    #animations with the 2D galaxy cutout
     #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
