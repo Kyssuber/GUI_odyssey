@@ -249,52 +249,57 @@ class MainPage(tk.Frame):
         
         #create all entry textboxes (with labels and initial values), midi button
         
-        ylab = tk.Label(self.frame_soni,text='yscale').grid(row=0,column=0)
+        #this checkbox inverts the note assignment such that high values have low notes and low values have high notes.
+        self.var_rev = tk.IntVar()
+        self.rev_checkbox = tk.Checkbutton(self.frame_soni, text='Note Inversion', onvalue=1, offvalue=0, variable=self.var_rev, font='Arial 17')
+        self.rev_checkbox.grid(row=0,column=0,columnspan=2)
+        
+        ylab = tk.Label(self.frame_soni,text='yscale').grid(row=1,column=0)
         self.y_scale_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.y_scale_entry.insert(0,'0.5')
-        self.y_scale_entry.grid(row=0,column=1,columnspan=1)
+        self.y_scale_entry.grid(row=1,column=1,columnspan=1)
         
-        vmin_lab = tk.Label(self.frame_soni,text='Min Velocity').grid(row=1,column=0)
+        vmin_lab = tk.Label(self.frame_soni,text='Min Velocity').grid(row=2,column=0)
         self.vel_min_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.vel_min_entry.insert(0,'10')
-        self.vel_min_entry.grid(row=1,column=1,columnspan=1)
+        self.vel_min_entry.grid(row=2,column=1,columnspan=1)
         
-        vmax_lab = tk.Label(self.frame_soni,text='Max Velocity').grid(row=2,column=0)
+        vmax_lab = tk.Label(self.frame_soni,text='Max Velocity').grid(row=3,column=0)
         self.vel_max_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.vel_max_entry.insert(0,'100')
-        self.vel_max_entry.grid(row=2,column=1,columnspan=1)
+        self.vel_max_entry.grid(row=3,column=1,columnspan=1)
         
-        bpm_lab = tk.Label(self.frame_soni,text='BPM').grid(row=3,column=0)
+        bpm_lab = tk.Label(self.frame_soni,text='BPM').grid(row=4,column=0)
         self.bpm_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                   font='Arial 15')
         self.bpm_entry.insert(0,'35')
-        self.bpm_entry.grid(row=3,column=1,columnspan=1)
+        self.bpm_entry.grid(row=4,column=1,columnspan=1)
         
-        xminmax_lab = tk.Label(self.frame_soni,text='xmin, xmax').grid(row=4,column=0)
+        xminmax_lab = tk.Label(self.frame_soni,text='xmin, xmax').grid(row=5,column=0)
         self.xminmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green',
                                       font='Arial 15')
         self.xminmax_entry.insert(0,'x1, x2')
-        self.xminmax_entry.grid(row=4,column=1,columnspan=1)
+        self.xminmax_entry.grid(row=5,column=1,columnspan=1)
         
-        key_lab = tk.Label(self.frame_soni,text='Key Signature').grid(row=5,column=0)
+        key_lab = tk.Label(self.frame_soni,text='Key Signature').grid(row=6,column=0)
         self.key_menu = tk.OptionMenu(self.frame_soni, self.keyvar, *self.keyvar_options)
         self.key_menu.config(bg='black',fg='black',font='Arial 15')
-        self.key_menu.grid(row=5,column=1,columnspan=1)
+        self.key_menu.grid(row=6,column=1,columnspan=1)
         
-        program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=6,column=0)
+        program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=7,column=0)
         self.program_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.program_entry.insert(0,'0')
-        self.program_entry.grid(row=6,column=1,columnspan=1)
+        self.program_entry.grid(row=7,column=1,columnspan=1)
         
-        duration_lab = tk.Label(self.frame_soni,text='Duration (sec)').grid(row=7,column=0)
+        duration_lab = tk.Label(self.frame_soni,text='Duration (sec)').grid(row=8,column=0)
         self.duration_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                        font='Arial 15')
         self.duration_entry.insert(0,'1')
-        self.duration_entry.grid(row=7,column=1,columnspan=1)
+        self.duration_entry.grid(row=8,column=1,columnspan=1)
     
     def init_display_size(self):
         #aim --> match display frame size with that once the canvas is added
@@ -341,7 +346,7 @@ class MainPage(tk.Frame):
     def add_midi_button(self):
         self.midi_button = tk.Button(self.frame_soni, text='Sonify', padx=20, pady=10, font=self.helv20, 
                                      command=self.midi_setup_bar)
-        self.midi_button.grid(row=8,column=0,columnspan=2)
+        self.midi_button.grid(row=9,column=0,columnspan=2)
     
     def add_angle_buttons(self):
         self.angle_button = tk.Button(self.frame_box, text='Rotate',padx=5,pady=10,font=self.helv20,
@@ -544,8 +549,7 @@ class MainPage(tk.Frame):
     def find_closest_mean(self,meanlist):
         
         #from https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
-        self.closest_mean_index = np.where(np.asarray(meanlist) == min(meanlist, key=lambda x:abs(x-float(self.mean_px))))[0][0]
-        
+        self.closest_mean_index = np.where(np.asarray(meanlist) == min(meanlist, key=lambda x:abs(x-float(self.mean_px))))[0][0]     
     
     def placeBar(self, event):  
         
@@ -701,7 +705,6 @@ class MainPage(tk.Frame):
             self.two_rot = self.p2
             self.three_rot = (self.p1[0],self.p2[1])
             self.four_rot = (self.p2[0],self.p1[1])
-
         
     def RecRot(self):
     
@@ -894,6 +897,9 @@ class MainPage(tk.Frame):
             except:
                 pass
     
+    def reverse_hilow(self):
+        return
+    
     # Function for opening the file explorer window
     def browseFiles(self):
         filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_w1/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
@@ -919,7 +925,6 @@ class MainPage(tk.Frame):
         self.bpm = int(self.bpm_entry.get())
         self.program = int(self.program_entry.get())   #the instrument!
         self.duration = float(self.duration_entry.get())
-
         
         try:
             self.angle = float(self.angle_box.get())
@@ -1001,16 +1006,16 @@ class MainPage(tk.Frame):
         #the following converts note names into midi notes
         note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
         n_notes = len(note_midis)
-        
-        print(note_midis)
-        print('unscaled:',y_data)
-        print('scaled:',y_data_scaled)
                                                             
         #MAPPING DATA TO THE MIDI NOTES!        
         self.midi_data = []
         #for every data point, map y_data_scaled values such that smallest/largest px is lowest/highest note
         for i in range(len(self.t_data)):   #assigns midi note number to whichever y_data_scaled[i] is nearest
-            note_index = round(self.map_value(y_data_scaled[i],0,1,0,n_notes-1))
+            #apply the "note inversion" if desired --> high values either assigned high notes or, if inverted, low notes
+            if int(self.var_rev.get())==0:
+                note_index = round(self.map_value(y_data_scaled[i],0,1,0,n_notes-1))
+            if int(self.var_rev.get())==1:
+                note_index = round(self.map_value(y_data_scaled[i],0,1,n_notes-1,0))
             self.midi_data.append(note_midis[note_index])
 
         #map data to note velocities (equivalent to the sound volume)
@@ -1018,12 +1023,9 @@ class MainPage(tk.Frame):
         for i in range(len(y_data_scaled)):
             note_velocity = round(self.map_value(y_data_scaled[i],0,1,self.vel_min,self.vel_max)) #larger values, heavier sound
             self.vel_data.append(note_velocity)
-        
-        print('velocity:',self.vel_data)
-        
+                
         self.midi_allnotes() 
-        print('mean values:',self.mean_list_norot)
-        print('midi notes:',self.midi_data)
+
     def midi_allnotes(self):
         
         self.create_rectangle()
