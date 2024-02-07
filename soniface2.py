@@ -3,6 +3,8 @@ Class layout adapted from
 https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
+import sys
+
 import ffmpeg
 from midi2audio import FluidSynth
 from midiutil import MIDIFile
@@ -40,16 +42,14 @@ from mido import MidiFile
 
 homedir = os.getenv('HOME')
 
-matplotlib.rcParams['animation.ffmpeg_path'] = homedir+'/Downloads/ffmpeg'   #need for generating animations...
-
 #create main window container, into which the first page will be placed.
 class App(tk.Tk):
     
-    def __init__(self, *args, **kwargs):          #INITIALIZE; will always run when App class is called.
-        tk.Tk.__init__(self, *args, **kwargs)     #initialize tkinter; args are parameter arguments, kwargs can be dictionary arguments
+    def __init__(self, path_to_repos, initial_browsedir, soundfont, window_geometry):          #INITIALIZE; will always run when App class is called.
+        tk.Tk.__init__(self)     #initialize tkinter; *args are parameter arguments, **kwargs can be dictionary arguments
         
         self.title('MIDI-chlorians: Sonification of Nearby Galaxies')
-        self.geometry('980x600')
+        self.geometry(window_geometry)
         self.resizable(True,True)
         self.rowspan=10
         
@@ -61,7 +61,7 @@ class App(tk.Tk):
 
         ## Initialize Frames
         self.frames = {}     #empty dictionary
-        frame = MainPage(container, self)   #define frame  
+        frame = MainPage(container, self, path_to_repos, initial_browsedir, soundfont)   #define frame  
         self.frames[MainPage] = frame     #assign new dictionary entry {MainPage: frame}
         frame.grid(row=0,column=0,sticky='nsew')   #define where to place frame within the container...CENTER!
         for i in range(self.rowspan):
@@ -89,23 +89,23 @@ class App(tk.Tk):
     
     #once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
     def popup_loadfits(self):
-        self.textbox1 = open(homedir+'/github/GUI_odyssey/readme_files/loadfits.txt','r').reaed()
+        self.textbox1 = open(path_to_repos+'readme_files/loadfits.txt','r').reaed()
         messagebox.showinfo('How to Load a FITS File',self.textbox1)
     
     def popup_sonifeat(self):
-        self.textbox2 = open(homedir+'/github/GUI_odyssey/readme_files/sonifeat.txt','r').read()
+        self.textbox2 = open(path_to_repos+'readme_files/sonifeat.txt','r').read()
         messagebox.showinfo('Sonification Features',self.textbox2)
     
     def popup_rectline(self):
-        self.textbox3 = open(homedir+'/github/GUI_odyssey/readme_files/rectline.txt').read()
+        self.textbox3 = open(path_to_repos+'readme_files/rectline.txt').read()
         messagebox.showinfo('Constraining Sonification Area',self.textbox3)
     
     def popup_wav(self):
-        self.textbox4 = open(homedir+'/github/GUI_odyssey/readme_files/howtowav.txt').read()
+        self.textbox4 = open(path_to_repos+'readme_files/howtowav.txt').read()
         messagebox.showinfo('Save Sound as WAV File',self.textbox4)
     
     def popup_mp4(self):
-        self.textbox5 = open(homedir+'/github/GUI_odyssey/readme_files/howtomp4.txt').read()
+        self.textbox5 = open(path_to_repos+'readme_files/howtomp4.txt').read()
         messagebox.showinfo('Save Sound (with Animation!) as MP4 File',self.textbox5)
     
     def show_frame(self, cont):     #'cont' represents the controller, enables switching between frames/windows...I think.
@@ -116,7 +116,12 @@ class App(tk.Tk):
 #inherits all from tk.Frame; will be on first window
 class MainPage(tk.Frame):    
     
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, path_to_repos, initial_browsedir, soundfont):
+        
+        #generalized parameters given in params.txt file
+        self.path_to_repos = path_to_repos
+        self.initial_browsedir = initial_browsedir
+        self.soundfont = soundfont
         
         #these variables will apply to the self.drawSq function, if the user desires to use it.
         self.bound_check=None
@@ -392,19 +397,19 @@ class MainPage(tk.Frame):
         
         if hasattr(self, 'midi_file'):
             
-            midi_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.mid'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_wavfile directory
+            midi_savename = self.path_to_repos+'saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.mid'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_wavfile directory
             
             #write file
             with open(midi_savename,"wb") as f:
                 self.midi_file.writeFile(f)
             
-            wav_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.wav'   
+            wav_savename = self.path_to_repos+'saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.wav'   
             
             fs = FluidSynth(sound_font=self.soundfont, gain=3)   #gain governs the volume of wavefile. I needed to tweak the source code of midi2audio in order to have the gain argument --> I'll give instructions somewhere for how to do so...try the github wiki. :-)
             
             if os.path.isfile(wav_savename):    
                 self.namecounter+=1
-                wav_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter)+'.wav'                
+                wav_savename = self.path_to_repos+'saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter)+'.wav'                
             else:
                 self.namecounter=0
             
@@ -432,12 +437,17 @@ class MainPage(tk.Frame):
         
         #many cutouts, especially those in the r-band, have pesky foreground stars and other artifacts, which will invariably dominate the display of the image stretch. one option is that I can grab the corresponding mask image for the galaxy and create a 'mask bool' of 0s and 1s, then multiply this by the image in order to dictate v1, v2, and the normalization *strictly* on the central galaxy pixel values. 
         
-        full_filepath = str(self.path_to_im.get()).split('/')
-        full_filename = full_filepath[-1]
-        split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
-        galaxyname = split_filename[0]
-        galaxyband = split_filename[3]
-
+        try:
+            full_filepath = str(self.path_to_im.get()).split('/')
+            full_filename = full_filepath[-1]
+            split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
+            galaxyname = split_filename[0]
+            galaxyband = split_filename[3]
+        except:
+            print('Selected filename is not split with "-" characters with galaxyband; defaulting to generic wavelength.')
+            galaxyname = split_filename[0]   #should still be the full filename
+            galaxyband = ' '
+        
         try:
             if (galaxyband=='r'):
                 mask_path = glob.glob(homedir+'/vf_html_w1/all_input_fits/'+galaxyname+'*'+'r-mask.fits')[0]
@@ -448,7 +458,7 @@ class MainPage(tk.Frame):
             self.mask_bool = ~(mask_image>0)
         
         except:
-            self.mask_bool = np.zeros((len(self.dat),len(self.dat)))+1
+            self.mask_bool = np.zeros((len(self.dat),len(self.dat)))+1  #create a fully array of 1s, won't affect image
             print('Mask image not found; proceeded with default v1, v2, and normalization values.')
         
         v1 = scoreatpercentile(self.dat*self.mask_bool,0.5)
@@ -461,12 +471,7 @@ class MainPage(tk.Frame):
         self.ax.set_xlim(0,len(self.dat)-1)
         self.ax.set_ylim(0,len(self.dat)-1)
         
-        #trying to extract a meaningful figure title from the path information
-        filename=self.path_to_im.get().split('/')[-1]  #split str into list, let delimiter=/, isolate filename
-        galaxy_name=filename.split('-')[0]  #galaxy name is first item in filename split list
-        band=filename.split('-')[-1].split('.')[0]  #last item in filename list is band.fits; split into two components, isolate the first
-        
-        self.ax.set_title(f'{galaxy_name} ({band})',fontsize=15)
+        self.ax.set_title(f'{galaxyname} ({galaxyband})',fontsize=15)
 
         self.im_length = np.shape(self.dat)[0]
         self.ymin = int(self.im_length/2-(0.20*self.im_length))
@@ -487,8 +492,8 @@ class MainPage(tk.Frame):
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
         
-        self.galaxy_name = galaxy_name   #will need for saving .wav file...
-        self.band = band                 #same rationale
+        self.galaxy_name = galaxyname    #will need for saving .wav file...
+        self.band = galaxyband                 #same rationale
         
     def change_canvas_event(self):
         
@@ -897,12 +902,9 @@ class MainPage(tk.Frame):
             except:
                 pass
     
-    def reverse_hilow(self):
-        return
-    
     # Function for opening the file explorer window
     def browseFiles(self):
-        filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_w1/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
+        filename = filedialog.askopenfilename(initialdir = self.initial_browsedir, title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
         self.path_to_im.delete(0,tk.END)
         self.path_to_im.insert(0,filename)        
     
@@ -945,9 +947,7 @@ class MainPage(tk.Frame):
         
         print(selected_sig)
         print(self.note_names)
-        
-        self.soundfont = homedir+'/Desktop/pkmngba.sf2'
-        
+                
         #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
         try:
             #for the case where the angle is not rotated
@@ -1091,11 +1091,11 @@ class MainPage(tk.Frame):
         
         self.save_sound()
         
-        ani_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'.mp4'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_mp4files directory
+        ani_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'.mp4'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_mp4files directory
             
         if os.path.isfile(ani_savename):    
             self.namecounter_ani+=1
-            ani_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter_ani)+'.mp4'                
+            ani_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter_ani)+'.mp4'                
         else:
             self.namecounter_ani=0
         
@@ -1130,11 +1130,11 @@ class MainPage(tk.Frame):
         
         del fig     #I am finished with the figure, so I shall delete references to the figure.
         
-        ani_both_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat.mp4'
+        ani_both_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat.mp4'
         
         if os.path.isfile(ani_both_savename):    
             self.namecounter_ani_both+=1
-            ani_both_savename = os.getcwd()+'/saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat-'+str(self.namecounter_ani_both)+'.mp4'                
+            ani_both_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat-'+str(self.namecounter_ani_both)+'.mp4'                
         else:
             self.namecounter_ani_both=0
         
@@ -1161,18 +1161,40 @@ if __name__ == "__main__":
     #parameter.txt file unpacking here
     
     
+    if '-h' in sys.argv or '--help' in sys.argv:
+        print("Usage: %s [-params (name of parameter.txt file, no single or double quotation marks)]")
+        sys.exit(1)
+        
+    if '-params' in sys.argv:
+        p = sys.argv.index('-params')
+        param_file = str(sys.argv[p+1])
     
+    #create dictionary with keyword and values from param textfile...
+    param_dict = {}
+    with open(param_file) as f:
+        for line in f:
+            try:
+                key = line.split()[0]
+                val = line.split()[1]
+                param_dict[key] = val
+            except:
+                continue
+
+    #now...extract parameters and assign to relevantly-named variables
+    path_to_ffmpeg = param_dict['path_to_ffmpeg']
+    path_to_repos = param_dict['path_to_repos']
+    initial_browsedir = param_dict['initial_browsedir']
+    soundfont = param_dict['soundfont']
+    window_geometry = param_dict['window_geometry']
     
+    matplotlib.rcParams['animation.ffmpeg_path'] = path_to_ffmpeg   #need for generating animations...
     
-    
-    
-    
-    
-    app = App()
+    app = App(path_to_repos, initial_browsedir, soundfont, window_geometry)
     app.mainloop()
     #app.destroy()    
     
     
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #animations with the 2D galaxy cutout
+    #vmin, vmax slider
     #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.

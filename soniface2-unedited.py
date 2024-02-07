@@ -3,6 +3,9 @@ Class layout adapted from
 https://stackoverflow.com/questions/7546050/switch-between-two-frames-in-tkinter/7557028#7557028
 '''
 
+import sys
+
+import ffmpeg
 from midi2audio import FluidSynth
 from midiutil import MIDIFile
 from audiolazy import str2midi
@@ -12,9 +15,10 @@ import tkinter as tk
 import numpy as np
 import os
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.animation as animation
 
-#from matplotlib import pyplot as plt      #don't use, since closing GUI doesn't close pyplot!
-                                           #this does add a bit more clunkiness to the code, however.
+#from matplotlib import pyplot as plt      #don't use with canvas, since closing GUI doesn't close pyplot!
+                                           #the workaround does add a bit more clunkiness to the code...
                                            #I did not create the rules. do not sue me.
 
 from matplotlib import figure              #see self.fig, self.ax.
@@ -34,17 +38,18 @@ import glob
 
 import sys
 from io import BytesIO
+from mido import MidiFile
 
 homedir = os.getenv('HOME')
 
 #create main window container, into which the first page will be placed.
 class App(tk.Tk):
     
-    def __init__(self, *args, **kwargs):          #INITIALIZE; will always run when App class is called.
-        tk.Tk.__init__(self, *args, **kwargs)     #initialize tkinter; args are parameter arguments, kwargs can be dictionary arguments
+    def __init__(self, path_to_repos, initial_browsedir, soundfont, window_geometry):          #INITIALIZE; will always run when App class is called.
+        tk.Tk.__init__(self)     #initialize tkinter; *args are parameter arguments, **kwargs can be dictionary arguments
         
         self.title('MIDI-chlorians: Sonification of Nearby Galaxies')
-        self.geometry('980x600')
+        self.geometry(window_geometry)
         self.resizable(True,True)
         self.rowspan=10
         
@@ -56,7 +61,7 @@ class App(tk.Tk):
 
         ## Initialize Frames
         self.frames = {}     #empty dictionary
-        frame = MainPage(container, self)   #define frame  
+        frame = MainPage(container, self, path_to_repos, initial_browsedir, soundfont)   #define frame  
         self.frames[MainPage] = frame     #assign new dictionary entry {MainPage: frame}
         frame.grid(row=0,column=0,sticky='nsew')   #define where to place frame within the container...CENTER!
         for i in range(self.rowspan):
@@ -81,25 +86,26 @@ class App(tk.Tk):
         self.menu.add_cascade(label='Help',menu=self.filemenu)
         
         self.config(menu=self.menu)
-    #IN PLACE OF THIS, CREATE MULTIPLE POPUP TEXTBOX FUNCTIONS THAT DESCRIBE EACH LABEL. THIS WILL SERVE AS THE 'WRITTEN TUTORIAL' OF THE GUI. Once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
+    
+    #once I record a proper video, I might also link the youtube address to each textboxes. and rather than type all text content here, I'll just create a few .txt files in the folder.
     def popup_loadfits(self):
-        self.textbox1 = open(homedir+'/github/GUI_odyssey/readme_files/loadfits.txt','r').reaed()
+        self.textbox1 = open(path_to_repos+'readme_files/loadfits.txt','r').reaed()
         messagebox.showinfo('How to Load a FITS File',self.textbox1)
     
     def popup_sonifeat(self):
-        self.textbox2 = open(homedir+'/github/GUI_odyssey/readme_files/sonifeat.txt','r').read()
+        self.textbox2 = open(path_to_repos+'readme_files/sonifeat.txt','r').read()
         messagebox.showinfo('Sonification Features',self.textbox2)
     
     def popup_rectline(self):
-        self.textbox3 = open(homedir+'/github/GUI_odyssey/readme_files/rectline.txt').read()
+        self.textbox3 = open(path_to_repos+'readme_files/rectline.txt').read()
         messagebox.showinfo('Constraining Sonification Area',self.textbox3)
     
     def popup_wav(self):
-        self.textbox4 = open(homedir+'/github/GUI_odyssey/readme_files/howtowav.txt').read()
+        self.textbox4 = open(path_to_repos+'readme_files/howtowav.txt').read()
         messagebox.showinfo('Save Sound as WAV File',self.textbox4)
     
     def popup_mp4(self):
-        self.textbox5 = open(homedir+'/github/GUI_odyssey/readme_files/howtomp4.txt').read()
+        self.textbox5 = open(path_to_repos+'readme_files/howtomp4.txt').read()
         messagebox.showinfo('Save Sound (with Animation!) as MP4 File',self.textbox5)
     
     def show_frame(self, cont):     #'cont' represents the controller, enables switching between frames/windows...I think.
@@ -110,7 +116,12 @@ class App(tk.Tk):
 #inherits all from tk.Frame; will be on first window
 class MainPage(tk.Frame):    
     
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, path_to_repos, initial_browsedir, soundfont):
+        
+        #generalized parameters given in params.txt file
+        self.path_to_repos = path_to_repos
+        self.initial_browsedir = initial_browsedir
+        self.soundfont = soundfont
         
         #these variables will apply to the self.drawSq function, if the user desires to use it.
         self.bound_check=None
@@ -123,23 +134,25 @@ class MainPage(tk.Frame):
         #initiate a counter to ensure that files do not overwrite one another for an individual galaxy
         #note: NEEDED FOR THE SAVE WIDGET
         self.namecounter=0
+        self.namecounter_ani=0
+        self.namecounter_ani_both=0
                 
         #dictionary for different key signatures
         
         self.note_dict = {
            'C Major': 'C2-D2-E2-F2-G2-A2-B2-C3-D3-E3-F3-G3-A3-B3-C4-D4-E4-F4-G4-A4-B4-C5-D5-E5-F5-G5-A5-B5',
-           'G Major': 'G2-A2-B2-C2-D2-E2-F#2-G3-A3-B3-C3-D3-E3-F#3-G4-A4-B4-C4-D4-E4-F#4-G5-A5-B5-C5-D5-E5-F#5',
-           'D Major': 'D2-E2-F#2-G2-A2-B2-C#2-D3-E3-F#3-G3-A3-B3-C#3-D4-E4-F#4-G4-A4-B4-C#4-D5-E5-F#5-G5-A5-B5-C#5',
-           'A Major': 'A2-B2-C#2-D2-E2-F#2-G#2-A3-B3-C#3-D3-E3-F#3-G#3-A4-B4-C#4-D4-E4-F#4-G#4-A5-B5-C#5-D5-E5-F#5-G#5',
-           'E Major': 'E2-F#2-G#2-A2-B2-C#2-D#2-E3-F#3-G#3-A3-B3-C#3-D#3-E4-F#4-G#4-A4-B4-C#4-D#4-E5-F#5-G#5-A5-B5-C#5-D#5',
-           'B Major': 'B2-C#2-D#2-E2-F#2-G#2-A#2-B3-C#3-D#3-E3-F#3-G#3-A#3-B4-C#4-D#4-E4-F#4-G#4-A#4-B5-C#5-D#5-E5-F#5-G#5-A#5',
-           'F# Major': 'F#2-G#2-A#2-B2-C#2-D#2-E#2-F#3-G#3-A#3-B3-C#3-D#3-E#3-F#4-G#4-A#4-B4-C#4-D#4-E#4-F#5-G#5-A#5-B5-C#5-D#5-E#5', 
-           'Gb Major': 'Gb2-Ab2-Bb2-Cb2-Db2-Eb2-F2-Gb3-Ab3-Bb3-Cb3-Db3-Eb3-F3-Gb4-Ab4-Bb4-Cb4-Db4-Eb4-F4-Gb5-Ab5-Bb5-Cb5-Db5-Eb5-F5',
-           'Db Major': 'Db2-Eb2-F2-Gb2-Ab2-Bb2-C2-Db3-Eb3-F3-Gb3-Ab3-Bb3-C3-Db4-Eb4-F4-Gb4-Ab4-Bb4-C4-Db5-Eb5-F5-Gb5-Ab5-Bb5-C5',
-           'Ab Major': 'Ab2-Bb2-C2-Db2-Eb2-F2-G2-Ab3-Bb3-C3-Db3-Eb3-F3-G3-Ab4-Bb4-C4-Db4-Eb4-F4-G4-Ab5-Bb5-C5-Db5-Eb5-F5-G5', 
-           'Eb Major': 'Eb2-F2-G2-Ab2-Bb2-C2-D2-Eb3-F3-G3-Ab3-Bb3-C3-D3-Eb4-F4-G4-Ab4-Bb4-C4-D4-Eb5-F5-G5-Ab5-Bb5-C5-D5',
-           'Bb Major': 'Bb2-C2-D2-Eb2-F2-G2-A2-Bb3-C3-D3-Eb3-F3-G3-A3-Bb4-C4-D4-Eb4-F4-G4-A4-Bb5-C5-D5-Eb5-F5-G5-A5',
-           'F Major': 'F2-G2-A2-Bb2-C2-D2-E2-F3-G3-A3-Bb3-C3-D3-E3-F4-G4-A4-Bb4-C4-D4-E4-F5-G5-A5-Bb5-C5-D5-E5', 
+           'G Major': 'G1-A1-B1-C2-D2-E2-F#2-G2-A2-B2-C3-D3-E3-F#3-G3-A3-B3-C4-D4-E4-F#4-G4-A4-B4-C5-D5-E5-F#5',
+           'D Major': 'D2-E2-F#2-G2-A2-B2-C#3-D3-E3-F#3-G3-A3-B3-C#4-D4-E4-F#4-G4-A4-B4-C#5-D5-E5-F#5-G5-A5-B5-C#6',
+           'A Major': 'A1-B1-C#2-D2-E2-F#2-G#2-A2-B2-C#3-D3-E3-F#3-G#3-A3-B3-C#4-D4-E4-F#4-G#4-A4-B4-C#5-D5-E5-F#5-G#5',
+           'E Major': 'E2-F#2-G#2-A2-B2-C#3-D#3-E3-F#3-G#3-A3-B3-C#4-D#4-E4-F#4-G#4-A4-B4-C#5-D#5-E5-F#5-G#5-A5-B5-C#6-D#6',
+           'B Major': 'B1-C#2-D#2-E2-F#2-G#2-A#2-B3-C#3-D#3-E3-F#3-G#3-A#3-B4-C#4-D#4-E4-F#4-G#4-A#4-B5-C#5-D#5-E5-F#5-G#5-A#5',
+           'F# Major': 'F#2-G#2-A#2-B2-C#3-D#3-E#3-F#3-G#3-A#3-B3-C#4-D#4-E#4-F#4-G#4-A#4-B4-C#5-D#5-E#5-F#5-G#5-A#5-B5-C#6-D#6-E#6', 
+           'Gb Major': 'Gb1-Ab1-Bb1-Cb2-Db2-Eb2-F2-Gb2-Ab2-Bb2-Cb3-Db3-Eb3-F3-Gb3-Ab3-Bb3-Cb4-Db4-Eb4-F4-Gb4-Ab4-Bb4-Cb5-Db5-Eb5-F5',
+           'Db Major': 'Db2-Eb2-F2-Gb2-Ab2-Bb2-C3-Db3-Eb3-F3-Gb3-Ab3-Bb3-C4-Db4-Eb4-F4-Gb4-Ab4-Bb4-C5-Db5-Eb5-F5-Gb5-Ab5-Bb5-C6',
+           'Ab Major': 'Ab1-Bb1-C2-Db2-Eb2-F2-G2-Ab2-Bb2-C3-Db3-Eb3-F3-G3-Ab3-Bb3-C4-Db4-Eb4-F4-G4-Ab4-Bb4-C5-Db5-Eb5-F5-G5', 
+           'Eb Major': 'Eb2-F2-G2-Ab2-Bb2-C3-D3-Eb3-F3-G3-Ab3-Bb3-C4-D4-Eb4-F4-G4-Ab4-Bb4-C5-D5-Eb5-F5-G5-Ab5-Bb5-C6-D6',
+           'Bb Major': 'Bb1-C2-D2-Eb2-F2-G2-A2-Bb2-C3-D3-Eb3-F3-G3-A3-Bb3-C4-D4-Eb4-F4-G4-A4-Bb4-C5-D5-Eb5-F5-G5-A5',
+           'F Major': 'F2-G2-A2-Bb2-C3-D3-E3-F3-G3-A3-Bb3-C4-D4-E4-F4-G4-A4-Bb4-C5-D5-E5-F5-G5-A5-Bb5-C6-D6-E6', 
         }
         
         #isolate the key signature names --> need for the dropdown menu
@@ -153,8 +166,6 @@ class MainPage(tk.Frame):
         
         #define a font
         self.helv20 = tkFont.Font(family='Helvetica', size=20, weight='bold')
-        
-        self.textbox="In progress."
         
         #first frame...
         tk.Frame.__init__(self,parent)
@@ -199,7 +210,7 @@ class MainPage(tk.Frame):
         
         self.galaxy_to_display()
         '''
-        INSERT INITIATION FUNCTIONS TO RUN HERE.
+        INSERT INITIATION FUNCTIONS TO RUN BELOW.
         '''
         self.initiate_vals()
         self.add_info_button()
@@ -234,6 +245,7 @@ class MainPage(tk.Frame):
     
     def populate_save_widget(self):
         self.add_save_button()
+        self.add_saveani_button()
         return
     
     def populate_soni_widget(self):
@@ -242,52 +254,57 @@ class MainPage(tk.Frame):
         
         #create all entry textboxes (with labels and initial values), midi button
         
-        ylab = tk.Label(self.frame_soni,text='yscale').grid(row=0,column=0)
+        #this checkbox inverts the note assignment such that high values have low notes and low values have high notes.
+        self.var_rev = tk.IntVar()
+        self.rev_checkbox = tk.Checkbutton(self.frame_soni, text='Note Inversion', onvalue=1, offvalue=0, variable=self.var_rev, font='Arial 17')
+        self.rev_checkbox.grid(row=0,column=0,columnspan=2)
+        
+        ylab = tk.Label(self.frame_soni,text='yscale').grid(row=1,column=0)
         self.y_scale_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.y_scale_entry.insert(0,'0.5')
-        self.y_scale_entry.grid(row=0,column=1,columnspan=1)
+        self.y_scale_entry.grid(row=1,column=1,columnspan=1)
         
-        vmin_lab = tk.Label(self.frame_soni,text='Min Velocity').grid(row=1,column=0)
+        vmin_lab = tk.Label(self.frame_soni,text='Min Velocity').grid(row=2,column=0)
         self.vel_min_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.vel_min_entry.insert(0,'10')
-        self.vel_min_entry.grid(row=1,column=1,columnspan=1)
+        self.vel_min_entry.grid(row=2,column=1,columnspan=1)
         
-        vmax_lab = tk.Label(self.frame_soni,text='Max Velocity').grid(row=2,column=0)
+        vmax_lab = tk.Label(self.frame_soni,text='Max Velocity').grid(row=3,column=0)
         self.vel_max_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.vel_max_entry.insert(0,'100')
-        self.vel_max_entry.grid(row=2,column=1,columnspan=1)
+        self.vel_max_entry.grid(row=3,column=1,columnspan=1)
         
-        bpm_lab = tk.Label(self.frame_soni,text='BPM').grid(row=3,column=0)
+        bpm_lab = tk.Label(self.frame_soni,text='BPM').grid(row=4,column=0)
         self.bpm_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                   font='Arial 15')
         self.bpm_entry.insert(0,'35')
-        self.bpm_entry.grid(row=3,column=1,columnspan=1)
+        self.bpm_entry.grid(row=4,column=1,columnspan=1)
         
-        xminmax_lab = tk.Label(self.frame_soni,text='xmin, xmax').grid(row=4,column=0)
+        xminmax_lab = tk.Label(self.frame_soni,text='xmin, xmax').grid(row=5,column=0)
         self.xminmax_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green',
                                       font='Arial 15')
         self.xminmax_entry.insert(0,'x1, x2')
-        self.xminmax_entry.grid(row=4,column=1,columnspan=1)
+        self.xminmax_entry.grid(row=5,column=1,columnspan=1)
         
-        key_lab = tk.Label(self.frame_soni,text='Key Signature').grid(row=5,column=0)
+        key_lab = tk.Label(self.frame_soni,text='Key Signature').grid(row=6,column=0)
         self.key_menu = tk.OptionMenu(self.frame_soni, self.keyvar, *self.keyvar_options)
         self.key_menu.config(bg='black',fg='black',font='Arial 15')
-        self.key_menu.grid(row=5,column=1,columnspan=1)
+        self.key_menu.grid(row=6,column=1,columnspan=1)
         
-        program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=6,column=0)
+        program_lab = tk.Label(self.frame_soni,text='Instrument (0-127)').grid(row=7,column=0)
         self.program_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                       font='Arial 15')
         self.program_entry.insert(0,'0')
-        self.program_entry.grid(row=6,column=1,columnspan=1)
+        self.program_entry.grid(row=7,column=1,columnspan=1)
         
-        duration_lab = tk.Label(self.frame_soni,text='Duration (sec)').grid(row=7,column=0)
+        duration_lab = tk.Label(self.frame_soni,text='Duration (sec)').grid(row=8,column=0)
         self.duration_entry = tk.Entry(self.frame_soni, width=10, borderwidth=2, bg='black', fg='lime green', 
                                        font='Arial 15')
         self.duration_entry.insert(0,'1')
-        self.duration_entry.grid(row=7,column=1,columnspan=1)
+        self.duration_entry.grid(row=8,column=1,columnspan=1)
     
     def init_display_size(self):
         #aim --> match display frame size with that once the canvas is added
@@ -317,6 +334,11 @@ class MainPage(tk.Frame):
                                      command=self.save_sound)
         self.save_button.grid(row=0,column=0)
     
+    def add_saveani_button(self):
+        self.saveani_button = tk.Button(self.frame_save, text='Save as MP4', padx=15, pady=10, font='Ariel 20',
+                                        command=self.create_midi_animation)
+        self.saveani_button.grid(row=0,column=1)
+    
     def add_browse_button(self):
         self.button_explore = tk.Button(self.frame_buttons ,text="Browse", padx=20, pady=10, font=self.helv20, 
                                         command=self.browseFiles)
@@ -329,7 +351,7 @@ class MainPage(tk.Frame):
     def add_midi_button(self):
         self.midi_button = tk.Button(self.frame_soni, text='Sonify', padx=20, pady=10, font=self.helv20, 
                                      command=self.midi_setup_bar)
-        self.midi_button.grid(row=8,column=0,columnspan=2)
+        self.midi_button.grid(row=9,column=0,columnspan=2)
     
     def add_angle_buttons(self):
         self.angle_button = tk.Button(self.frame_box, text='Rotate',padx=5,pady=10,font=self.helv20,
@@ -375,40 +397,35 @@ class MainPage(tk.Frame):
         
         if hasattr(self, 'midi_file'):
             
-            midi_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.mid'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_wavfile directory
+            midi_savename = self.path_to_repos+'saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.mid'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_wavfile directory
             
             #write file
             with open(midi_savename,"wb") as f:
                 self.midi_file.writeFile(f)
             
-            wav_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.wav'   
+            wav_savename = self.path_to_repos+'saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'.wav'   
             
             fs = FluidSynth(sound_font=self.soundfont, gain=3)   #gain governs the volume of wavefile. I needed to tweak the source code of midi2audio in order to have the gain argument --> I'll give instructions somewhere for how to do so...try the github wiki. :-)
             
             if os.path.isfile(wav_savename):    
                 self.namecounter+=1
-                wav_savename = os.getcwd()+'/saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter)+'.wav'                
+                wav_savename = self.path_to_repos+'saved_wavfiles/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter)+'.wav'                
             else:
                 self.namecounter=0
             
             fs.midi_to_audio(midi_savename, wav_savename) 
             
-            #write textfile with galaxy, parameter information here!
+            self.download_success()   #play the jingle
             
+            self.time = self.get_midi_length(wav_savename)   #length of soundfile
             
-            #when finished downloading, there will be a ding sound indicating completion. 
-            path = os.getcwd()+'/success.mp3'
-            mixer.init()
-            mixer.music.set_volume(0.25)
-            mixer.music.load(path)
-            mixer.music.play()
-            print('Done! Check the saved_wavfile directory.')
+            self.wav_savename = wav_savename   #need for creating .mp4
             
         #if user has not yet clicked "Sonify", then clicking button will activate a popup message
         else:
             self.textbox = 'Do not try to save an empty .wav file! Create a rectangle on the image canvas then click "Sonify" to generate MIDI notes.'
             self.popup()
-    
+        
     def initiate_canvas(self):
         
         #delete any and all miscellany (galaxy image, squares, lines) from the canvas (created using 
@@ -420,12 +437,17 @@ class MainPage(tk.Frame):
         
         #many cutouts, especially those in the r-band, have pesky foreground stars and other artifacts, which will invariably dominate the display of the image stretch. one option is that I can grab the corresponding mask image for the galaxy and create a 'mask bool' of 0s and 1s, then multiply this by the image in order to dictate v1, v2, and the normalization *strictly* on the central galaxy pixel values. 
         
-        full_filepath = str(self.path_to_im.get()).split('/')
-        full_filename = full_filepath[-1]
-        split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
-        galaxyname = split_filename[0]
-        galaxyband = split_filename[3]
-
+        try:
+            full_filepath = str(self.path_to_im.get()).split('/')
+            full_filename = full_filepath[-1]
+            split_filename = full_filename.replace('.','-').split('-')   #replace .fits with -fits, then split all
+            galaxyname = split_filename[0]
+            galaxyband = split_filename[3]
+        except:
+            print('Selected filename is not split with "-" characters with galaxyband; defaulting to generic wavelength.')
+            galaxyname = split_filename[0]   #should still be the full filename
+            galaxyband = ' '
+        
         try:
             if (galaxyband=='r'):
                 mask_path = glob.glob(homedir+'/vf_html_w1/all_input_fits/'+galaxyname+'*'+'r-mask.fits')[0]
@@ -436,7 +458,7 @@ class MainPage(tk.Frame):
             self.mask_bool = ~(mask_image>0)
         
         except:
-            self.mask_bool = np.zeros((len(self.dat),len(self.dat)))+1
+            self.mask_bool = np.zeros((len(self.dat),len(self.dat)))+1  #create a fully array of 1s, won't affect image
             print('Mask image not found; proceeded with default v1, v2, and normalization values.')
         
         v1 = scoreatpercentile(self.dat*self.mask_bool,0.5)
@@ -444,18 +466,12 @@ class MainPage(tk.Frame):
         norm_im = simple_norm(self.dat*self.mask_bool,'asinh', min_percent=0.5, max_percent=99.9,
                               min_cut=v1, max_cut=v2)  #'beautify' the image
         
-        #self.fig = figure.Figure(figsize=(5,5))
         self.ax = self.fig.add_subplot()
         self.im = self.ax.imshow(self.dat,origin='lower',norm=norm_im)
         self.ax.set_xlim(0,len(self.dat)-1)
         self.ax.set_ylim(0,len(self.dat)-1)
         
-        #trying to extract a meaningful figure title from the path information
-        filename=self.path_to_im.get().split('/')[-1]  #split str into list, let delimiter=/, isolate filename
-        galaxy_name=filename.split('-')[0]  #galaxy name is first item in filename split list
-        band=filename.split('-')[-1].split('.')[0]  #last item in filename list is band.fits; split into two components, isolate the first
-        
-        self.ax.set_title(f'{galaxy_name} ({band})',fontsize=15)
+        self.ax.set_title(f'{galaxyname} ({galaxyband})',fontsize=15)
 
         self.im_length = np.shape(self.dat)[0]
         self.ymin = int(self.im_length/2-(0.20*self.im_length))
@@ -476,8 +492,8 @@ class MainPage(tk.Frame):
         self.label = self.canvas.get_tk_widget()
         self.label.grid(row=0,column=0,columnspan=3,rowspan=6)
         
-        self.galaxy_name = galaxy_name   #will need for saving .wav file...
-        self.band = band                 #same rationale
+        self.galaxy_name = galaxyname    #will need for saving .wav file...
+        self.band = galaxyband                 #same rationale
         
     def change_canvas_event(self):
         
@@ -538,8 +554,7 @@ class MainPage(tk.Frame):
     def find_closest_mean(self,meanlist):
         
         #from https://stackoverflow.com/questions/12141150/from-list-of-integers-get-number-closest-to-a-given-value
-        self.closest_mean_index = np.where(np.asarray(meanlist) == min(meanlist, key=lambda x:abs(x-float(self.mean_px))))[0][0]
-        
+        self.closest_mean_index = np.where(np.asarray(meanlist) == min(meanlist, key=lambda x:abs(x-float(self.mean_px))))[0][0]     
     
     def placeBar(self, event):  
         
@@ -695,7 +710,6 @@ class MainPage(tk.Frame):
             self.two_rot = self.p2
             self.three_rot = (self.p1[0],self.p2[1])
             self.four_rot = (self.p2[0],self.p1[1])
-
         
     def RecRot(self):
     
@@ -890,7 +904,7 @@ class MainPage(tk.Frame):
     
     # Function for opening the file explorer window
     def browseFiles(self):
-        filename = filedialog.askopenfilename(initialdir = "/Users/k215c316/vf_html_w1/all_input_fits/", title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
+        filename = filedialog.askopenfilename(initialdir = self.initial_browsedir, title = "Select a File", filetypes = ([("FITS Files", ".fits")]))
         self.path_to_im.delete(0,tk.END)
         self.path_to_im.insert(0,filename)        
     
@@ -907,13 +921,12 @@ class MainPage(tk.Frame):
         
         #define various quantities required for midi file generation
         self.y_scale = float(self.y_scale_entry.get())
-        self.strips_per_beat = 15
+        self.strips_per_beat = 10
         self.vel_min = int(self.vel_min_entry.get())
         self.vel_max = int(self.vel_max_entry.get())
         self.bpm = int(self.bpm_entry.get())
         self.program = int(self.program_entry.get())   #the instrument!
         self.duration = float(self.duration_entry.get())
-
         
         try:
             self.angle = float(self.angle_box.get())
@@ -934,9 +947,7 @@ class MainPage(tk.Frame):
         
         print(selected_sig)
         print(self.note_names)
-        
-        self.soundfont = homedir+'/Desktop/pkmngba.sf2'
-        
+                
         #use user-drawn rectangle in order to define xmin, xmax; ymin, ymax. if no rectangle drawn, then default to image width for x and some fraction of the height for y.
         try:
             #for the case where the angle is not rotated
@@ -980,10 +991,6 @@ class MainPage(tk.Frame):
             for line in vertical_lines:
                 mean_strip_values.append(np.mean(line))
             
-            #for i in range(self.xmin,self.xmax):
-            #    strips.append(band[i,:])   #individual vertical strips
-            #    mean_strip_values[i-self.xmin] = np.mean(strips[i-self.xmin])   #the 'ydata'; i-self.xmin for correct indices (will go from 0 to self.xmax-self.xmin)
-            
             self.mean_list_norot = mean_strip_values
         
         if self.angle != 0:
@@ -992,9 +999,6 @@ class MainPage(tk.Frame):
     
         #rescale strip number to beats
         self.t_data = np.arange(0,len(mean_strip_values),1) / self.strips_per_beat   #convert to 'time' steps
-        duration_beats=np.max(self.t_data)   #duration is end of the t_data list, or the max value in this list
-        #print('Duration:',duration_beats, 'beats')
-        #one beat = one quarter note
         
         y_data = self.map_value(mean_strip_values,min(mean_strip_values),max(mean_strip_values),0,1)   #normalizes values
         y_data_scaled = y_data**self.y_scale
@@ -1002,13 +1006,16 @@ class MainPage(tk.Frame):
         #the following converts note names into midi notes
         note_midis = [str2midi(n) for n in self.note_names]  #list of midi note numbers
         n_notes = len(note_midis)
-        #print('Resolution:',n_notes,'notes')
                                                             
         #MAPPING DATA TO THE MIDI NOTES!        
         self.midi_data = []
         #for every data point, map y_data_scaled values such that smallest/largest px is lowest/highest note
         for i in range(len(self.t_data)):   #assigns midi note number to whichever y_data_scaled[i] is nearest
-            note_index = round(self.map_value(y_data_scaled[i],0,1,0,len(note_midis)-1))
+            #apply the "note inversion" if desired --> high values either assigned high notes or, if inverted, low notes
+            if int(self.var_rev.get())==0:
+                note_index = round(self.map_value(y_data_scaled[i],0,1,0,n_notes-1))
+            if int(self.var_rev.get())==1:
+                note_index = round(self.map_value(y_data_scaled[i],0,1,n_notes-1,0))
             self.midi_data.append(note_midis[note_index])
 
         #map data to note velocities (equivalent to the sound volume)
@@ -1016,9 +1023,9 @@ class MainPage(tk.Frame):
         for i in range(len(y_data_scaled)):
             note_velocity = round(self.map_value(y_data_scaled[i],0,1,self.vel_min,self.vel_max)) #larger values, heavier sound
             self.vel_data.append(note_velocity)
-        
+                
         self.midi_allnotes() 
-        
+
     def midi_allnotes(self):
         
         self.create_rectangle()
@@ -1061,7 +1068,7 @@ class MainPage(tk.Frame):
         #extract the midi and velocity notes associated with that index. 
         single_pitch = self.midi_data[self.closest_mean_index]
         single_volume = self.vel_data[self.closest_mean_index]
-            
+        
         midi_file.addNote(track=0, channel=0, pitch=single_pitch, time=self.t_data[1], duration=1, volume=single_volume)   #isolate the one note corresponding to the click event, add to midi file; the +1 is to account for the silly python notation conventions
         
         midi_file.writeFile(self.memfile)
@@ -1072,24 +1079,122 @@ class MainPage(tk.Frame):
         self.memfile.seek(0)   #for whatever reason, have to manually 'rewind' the track in order for mixer to play
         mixer.music.load(self.memfile)
         mixer.music.play()       
+    
+    ###ANIMATION FUNCTIONS###
+    
+    def get_midi_length(self,file):
+        wav_length = mixer.Sound(file).get_length() - 3   #there seems to be ~3 seconds of silence at the end of each file, so the "-3" trims this lardy bit. 
+        print(f'File Length (seconds): {mixer.Sound(file).get_length()}')
+        return wav_length
+    
+    def create_midi_animation(self):
+        
+        self.save_sound()
+        
+        ani_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'.mp4'   #using our current file conventions to define self.galaxy_name (see relevant line for further details); will save file to saved_mp4files directory
+            
+        if os.path.isfile(ani_savename):    
+            self.namecounter_ani+=1
+            ani_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-'+str(self.namecounter_ani)+'.mp4'                
+        else:
+            self.namecounter_ani=0
+        
+        fig = figure.Figure() 
+        
+        ax = fig.add_subplot()
+        ax.scatter(self.t_data, self.midi_data, self.vel_data, alpha=0.5, edgecolors='black')
+        
+        ax.set_xlabel('Time interval (s)', fontsize=12)
+        ax.set_ylabel('MIDI note', fontsize=12)
+
+        xmin = 0
+        xmax = np.max(self.t_data)
+        ymin = int(np.min(self.midi_data))
+        ymax = int(np.max(self.midi_data))
+
+        xvals = np.arange(0, xmax+1, 0.05)   #possible x-values for each pixel line, increments of 0.05 (which are close enough that the bar appears to move continuously)
+
+        def update_line(num, line):
+            i = xvals[num]
+            line.set_data([i, i], [ymin-5, ymax+5])
+            return line,
+
+        line, = ax.plot([], [], lw=2)
+        
+        l,v = ax.plot(xmin, ymin, xmax, ymax, lw=2, color='red')
+        
+        line_anim = animation.FuncAnimation(fig, update_line, frames=len(xvals), fargs=(l,),blit=True)
+
+        FFWriter = animation.FFMpegWriter()
+        line_anim.save(ani_savename,fps=len(xvals)/self.time)      
+        
+        del fig     #I am finished with the figure, so I shall delete references to the figure.
+        
+        ani_both_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat.mp4'
+        
+        if os.path.isfile(ani_both_savename):    
+            self.namecounter_ani_both+=1
+            ani_both_savename = self.path_to_repos+'saved_mp4files/'+str(self.galaxy_name)+'-'+str(self.band)+'-concat-'+str(self.namecounter_ani_both)+'.mp4'                
+        else:
+            self.namecounter_ani_both=0
+        
+        input_video = ffmpeg.input(ani_savename)
+        input_audio = ffmpeg.input(self.wav_savename)
+        
+        ffmpeg.concat(input_video, input_audio, v=1, a=1).output(ani_both_savename).run(capture_stdout=True, capture_stderr=True)
+            
+        self.download_success()
+        
+        self.textbox = 'Done! Check the saved_mp4file directory for the final product.'
+        self.popup()
+    
+    #when file(s) are finished downloading, there will be a ding sound indicating completion. it's fun.
+    def download_success(self):
+        path = os.getcwd()+'/success.mp3'
+        mixer.init()
+        mixer.music.set_volume(0.25)
+        mixer.music.load(path)
+        mixer.music.play()
         
 if __name__ == "__main__":
     
     #parameter.txt file unpacking here
     
     
+    if '-h' in sys.argv or '--help' in sys.argv:
+        print("Usage: %s [-params (name of parameter.txt file, no single or double quotation marks)]")
+        sys.exit(1)
+        
+    if '-params' in sys.argv:
+        p = sys.argv.index('-params')
+        param_file = str(sys.argv[p+1])
     
+    #create dictionary with keyword and values from param textfile...
+    param_dict = {}
+    with open(param_file) as f:
+        for line in f:
+            try:
+                key = line.split()[0]
+                val = line.split()[1]
+                param_dict[key] = val
+            except:
+                continue
+
+    #now...extract parameters and assign to relevantly-named variables
+    path_to_ffmpeg = param_dict['path_to_ffmpeg']
+    path_to_repos = param_dict['path_to_repos']
+    initial_browsedir = param_dict['initial_browsedir']
+    soundfont = param_dict['soundfont']
+    window_geometry = param_dict['window_geometry']
     
+    matplotlib.rcParams['animation.ffmpeg_path'] = path_to_ffmpeg   #need for generating animations...
     
-    
-    
-    
-    
-    app = App()
+    app = App(path_to_repos, initial_browsedir, soundfont, window_geometry)
     app.mainloop()
     #app.destroy()    
     
     
     #I should ALSO record a video tutorial on how to operate this doohickey.
-    #also also also...animations. maybe. with save.mp4 option.
+    #animations with the 2D galaxy cutout
+    #vmin, vmax slider
     #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
