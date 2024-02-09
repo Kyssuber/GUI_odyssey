@@ -196,11 +196,18 @@ class MainPage(tk.Frame):
         #create soni frame, which holds the event button for converting data into sound (midifile).
         #there are also heaps of text boxes with which the user can manipulate the sound conversion parameters
         self.frame_soni=tk.LabelFrame(self,text='Parameters (Click "Sonify" to play)',padx=5,pady=5)
-        self.frame_soni.grid(row=8,column=2,sticky='se')
+        self.frame_soni.grid(row=7,column=2,rowspan=2,sticky='se')
         for i in range(self.rowspan):
             self.frame_soni.columnconfigure(i, weight=1)
             self.frame_soni.rowconfigure(i, weight=1)
         
+        #create editcanvas frame --> manipulates vmin, vmax, cmap of the display image
+        self.frame_editcanvas = tk.LabelFrame(self,text='Change Display',padx=5,pady=5)
+        self.frame_editcanvas.grid(row=7,column=1,sticky='s')
+        for i in range(self.rowspan):
+            self.frame_editcanvas.columnconfigure(i, weight=1)
+            self.frame_editcanvas.columnconfigure(i, weight=1)
+            
         #create box frame --> check boxes for lines vs. squares when interacting with the figure canvas
         self.frame_box = tk.LabelFrame(self,text='Change Rectangle Angle',padx=5,pady=5)
         self.frame_box.grid(row=8,column=1,sticky='s')
@@ -217,6 +224,7 @@ class MainPage(tk.Frame):
         self.populate_soni_widget()
         self.populate_box_widget()
         self.populate_save_widget()
+        #self.populate_editcanvas_widget()
         self.init_display_size()
     
     def populate_box_widget(self):
@@ -243,10 +251,29 @@ class MainPage(tk.Frame):
         self.add_browse_button()
         self.add_enter_button()
     
+    def populate_editcanvas_widget(self,min_v=0, max_v=1, min_px=0, max_px=1):
+        
+        self.v1slider = tk.Scale(self.frame_editcanvas, from_=min_px, to=max_px, orient=tk.HORIZONTAL,
+                                label='vmin', command=self.change_vvalues)
+        self.v2slider = tk.Scale(self.frame_editcanvas, from_=min_px, to=max_px, orient=tk.HORIZONTAL,
+                                label='vmax', command=self.change_vvalues)
+        
+        self.v1slider.set(min_v)
+        self.v2slider.set(max_v)
+        
+        self.v1slider.grid(row=0,column=0)
+        self.v2slider.grid(row=1,column=0)
+    
+    def change_vvalues(self, value):
+        min_val = float(self.v1slider.get())
+        max_val = float(self.v2slider.get())
+        self.im.norm.autoscale([min_val, max_val])  #change vmin, vmax of self.im
+        #self.im.set_clim(vmin=min_val, vmax=max_val)   #another way of doing exactly what I typed above.
+        self.canvas.draw()   
+        
     def populate_save_widget(self):
         self.add_save_button()
         self.add_saveani_button()
-        return
     
     def populate_soni_widget(self):
         
@@ -465,6 +492,8 @@ class MainPage(tk.Frame):
         v2 = scoreatpercentile(self.dat*self.mask_bool,99.9)
         norm_im = simple_norm(self.dat*self.mask_bool,'asinh', min_percent=0.5, max_percent=99.9,
                               min_cut=v1, max_cut=v2)  #'beautify' the image
+        
+        self.populate_editcanvas_widget(min_v=int(v1), max_v=int(v2), min_px=np.min(self.dat), max_px=np.max(self.dat))
         
         self.ax = self.fig.add_subplot()
         self.im = self.ax.imshow(self.dat,origin='lower',norm=norm_im)
