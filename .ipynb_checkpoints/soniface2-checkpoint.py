@@ -224,7 +224,6 @@ class MainPage(tk.Frame):
         self.populate_soni_widget()
         self.populate_box_widget()
         self.populate_save_widget()
-        #self.populate_editcanvas_widget()
         self.init_display_size()
     
     def populate_box_widget(self):
@@ -254,15 +253,41 @@ class MainPage(tk.Frame):
     def populate_editcanvas_widget(self,min_v=0, max_v=1, min_px=0, max_px=1):
         
         self.v1slider = tk.Scale(self.frame_editcanvas, from_=min_px, to=max_px, orient=tk.HORIZONTAL,
-                                label='vmin', command=self.change_vvalues)
+                                command=self.change_vvalues)
         self.v2slider = tk.Scale(self.frame_editcanvas, from_=min_px, to=max_px, orient=tk.HORIZONTAL,
-                                label='vmax', command=self.change_vvalues)
+                                command=self.change_vvalues)
         
         self.v1slider.set(min_v)
         self.v2slider.set(max_v)
         
-        self.v1slider.grid(row=0,column=0)
-        self.v2slider.grid(row=1,column=0)
+        v1lab = tk.Label(self.frame_editcanvas,text='vmin').grid(row=0,column=0)
+        v2lab = tk.Label(self.frame_editcanvas,text='vmax').grid(row=1,column=0)
+        
+        self.v1slider.grid(row=0,column=1)
+        self.v2slider.grid(row=1,column=1)
+        
+        self.cmap_options = ['viridis', 'rainbow', 'plasma', 'spring', 
+                             'Wistia', 'cool', 'gist_heat', 'winter', 
+                             'Purples', 'Greens', 'Oranges', 'gray']
+        
+        #set up cmap dropdown menu
+        self.cmapvar = tk.StringVar()
+        self.cmapvar.set(self.cmap_options[0])
+        
+        self.cmap_menu = tk.OptionMenu(self.frame_editcanvas, self.cmapvar, *self.cmap_options, command=self.change_cmap)
+        self.cmap_menu.config(font='Arial 15',padx=5,pady=5) 
+        
+        cmaplab = tk.Label(self.frame_editcanvas,text='cmap').grid(row=2,column=0)
+        
+        self.cmap_menu.grid(row=2,column=1)
+        
+        
+        self.cmaprev = tk.IntVar()
+        
+        self.reverse_cmap = tk.Checkbutton(self.frame_editcanvas,text='Invert Colorbar', onvalue=1, offvalue=0, 
+                                           variable = self.cmaprev, font='Arial 15', command=self.reverse_cmap)
+        self.reverse_cmap.grid(row=3,column=0,columnspan=2)
+        
     
     def change_vvalues(self, value):
         min_val = float(self.v1slider.get())
@@ -270,6 +295,20 @@ class MainPage(tk.Frame):
         self.im.norm.autoscale([min_val, max_val])  #change vmin, vmax of self.im
         #self.im.set_clim(vmin=min_val, vmax=max_val)   #another way of doing exactly what I typed above.
         self.canvas.draw()   
+    
+    #command to change color scheme of the image
+    def change_cmap(self, value): 
+        self.im.set_cmap(self.cmapvar.get())
+        self.canvas.draw()
+    
+    #command to reverse the color schemes. for this version of matplotlib, reversal is as simple as appending _r 
+    def reverse_cmap(self):
+        if self.cmaprev.get()==1:
+            colorb = self.cmapvar.get() + '_r'
+        if self.cmaprev.get()==0:
+            colorb = self.cmapvar.get()
+        self.im.set_cmap(colorb)
+        self.canvas.draw()
         
     def populate_save_widget(self):
         self.add_save_button()
@@ -279,8 +318,8 @@ class MainPage(tk.Frame):
         
         self.add_midi_button()
         
-        #create all entry textboxes (with labels and initial values), midi button
-        
+        #create all entry textboxes (with labels and initial values), midi button!
+   
         #this checkbox inverts the note assignment such that high values have low notes and low values have high notes.
         self.var_rev = tk.IntVar()
         self.rev_checkbox = tk.Checkbutton(self.frame_soni, text='Note Inversion', onvalue=1, offvalue=0, variable=self.var_rev, font='Arial 17')
@@ -1225,5 +1264,4 @@ if __name__ == "__main__":
     
     #I should ALSO record a video tutorial on how to operate this doohickey.
     #animations with the 2D galaxy cutout
-    #vmin, vmax slider
     #A "SAVE AS CHORDS BUTTON!" w1+w3 overlay. w1 lower octaves, w3 higher? not yet sure.
