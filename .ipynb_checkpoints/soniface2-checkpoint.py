@@ -225,6 +225,7 @@ class MainPage(tk.Frame):
         self.populate_box_widget()
         self.populate_save_widget()
         self.init_display_size()
+        self.populate_editcanvas_widget()
     
     def populate_box_widget(self):
         self.angle_box = tk.Entry(self.frame_box, width=15, borderwidth=2, bg='black', fg='lime green',
@@ -257,9 +258,6 @@ class MainPage(tk.Frame):
         self.v2slider = tk.Scale(self.frame_editcanvas, from_=min_px, to=max_px, orient=tk.HORIZONTAL,
                                 command=self.change_vvalues)
         
-        self.v1slider.set(min_v)
-        self.v2slider.set(max_v)
-        
         v1lab = tk.Label(self.frame_editcanvas,text='vmin').grid(row=0,column=0)
         v2lab = tk.Label(self.frame_editcanvas,text='vmax').grid(row=1,column=0)
         
@@ -281,9 +279,7 @@ class MainPage(tk.Frame):
         
         self.cmap_menu.grid(row=2,column=1)
         
-        
         self.cmaprev = tk.IntVar()
-        
         self.reverse_cmap = tk.Checkbutton(self.frame_editcanvas,text='Invert Colorbar', onvalue=1, offvalue=0, 
                                            variable = self.cmaprev, font='Arial 15', command=self.reverse_cmap)
         self.reverse_cmap.grid(row=3,column=0,columnspan=2)
@@ -516,9 +512,9 @@ class MainPage(tk.Frame):
         
         try:
             if (galaxyband=='r'):
-                mask_path = glob.glob(homedir+'/vf_html_w1/all_input_fits/'+galaxyname+'*'+'r-mask.fits')[0]
+                mask_path = glob.glob(self.initial_browsedir+galaxyname+'*'+'r-mask.fits')[0]
             if (galaxyband=='W3') | (galaxyband=='W1'):
-                mask_path = glob.glob(homedir+'/vf_html_w1/all_input_fits/'+galaxyname+'*'+'wise-mask.fits')[0]
+                mask_path = glob.glob(self.initial_browsedir+galaxyname+'*'+'wise-mask.fits')[0]
                 
             mask_image = fits.getdata(mask_path)
             self.mask_bool = ~(mask_image>0)
@@ -532,8 +528,13 @@ class MainPage(tk.Frame):
         norm_im = simple_norm(self.dat*self.mask_bool,'asinh', min_percent=0.5, max_percent=99.9,
                               min_cut=v1, max_cut=v2)  #'beautify' the image
         
-        self.populate_editcanvas_widget(min_v=int(v1), max_v=int(v2), min_px=np.min(self.dat), max_px=np.max(self.dat))
+        self.v1slider.configure(from_=np.min(self.dat), to=np.max(self.dat))
+        self.v2slider.configure(from_=np.min(self.dat), to=np.max(self.dat))
         
+        #set the slider starting values
+        self.v1slider.set(v1)
+        self.v2slider.set(v2)
+
         self.ax = self.fig.add_subplot()
         self.im = self.ax.imshow(self.dat,origin='lower',norm=norm_im)
         self.ax.set_xlim(0,len(self.dat)-1)
